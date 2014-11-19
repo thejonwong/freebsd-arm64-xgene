@@ -1,6 +1,10 @@
 /*-
  * Copyright (c) 2014 Andrew Turner
+ * Copyright (c) 2014 The FreeBSD Foundation
  * All rights reserved.
+ *
+ * This software was developed by Andrew Turner under sponsorship from
+ * the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,7 +68,10 @@ ENTRY(cpu_throw)
 	isb
 
 	/* Invalidate the TLB */
-	tlbi	vmalle1
+	dsb	sy
+	tlbi	vmalle1is
+	dsb	sy
+	isb
 
 	/* Restore the registers */
 	ldp	x5, x6, [x4, #PCB_SP]
@@ -149,7 +156,10 @@ ENTRY(cpu_switch)
 	isb
 
 	/* Invalidate the TLB */
+	dsb	sy
 	tlbi	vmalle1is
+	dsb	sy
+	isb
 
 	/* Release the old thread */
 	str	x2, [x0, #TD_LOCK]
