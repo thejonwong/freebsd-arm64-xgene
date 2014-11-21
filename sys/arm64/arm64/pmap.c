@@ -601,6 +601,18 @@ pmap_l3(pmap_t pmap, vm_offset_t va)
 	return (pmap_l2_to_l3(l2, va));
 }
 
+/*
+ * Checks if the page is dirty. We currently lack proper tracking of this on
+ * arm64 so for now assume is a page mapped as rw was accessed it is.
+ */
+static inline int
+pmap_page_dirty(pt_entry_t pte)
+{
+
+	return ((pte & (ATTR_AF | ATTR_AP_RW_BIT)) ==
+	    (ATTR_AF | ATTR_AP(ATTR_AP_RW)));
+}
+
 static __inline void
 pmap_resident_count_inc(pmap_t pmap, int count)
 {
@@ -3307,12 +3319,10 @@ pmap_remove_l3(pmap_t pmap, pt_entry_t *l3, vm_offset_t va,
 	pmap_resident_count_dec(pmap, 1);
 	if (old_l3 & ATTR_SW_MANAGED) {
 		m = PHYS_TO_VM_PAGE(old_l3 & ~ATTR_MASK);
-#if 0
-		if ((oldpte & (PG_M | PG_RW)) == (PG_M | PG_RW))
+		if (pmap_page_dirty(old_l3))
 			vm_page_dirty(m);
-		if (oldpte & PG_A)
+		if (old_l3 & ATTR_AF)
 			vm_page_aflag_set(m, PGA_REFERENCED);
-#endif
 		CHANGE_PV_LIST_LOCK_TO_VM_PAGE(lockp, m);
 		pmap_pvh_free(&m->md, pmap, va);
 #if 0
@@ -3534,16 +3544,14 @@ pmap_remove_all(vm_page_t m)
 		*l3 = 0;
 		if (tl3 & ATTR_SW_WIRED)
 			pmap->pm_stats.wired_count--;
-#if 0
-		if (tpte & PG_A)
+		if ((tl3 & ATTR_AF) != 0)
 			vm_page_aflag_set(m, PGA_REFERENCED);
 
 		/*
 		 * Update the vm_page_t clean and reference bits.
 		 */
-		if ((tpte & (PG_M | PG_RW)) == (PG_M | PG_RW))
+		if (pmap_page_dirty(tl3))
 			vm_page_dirty(m);
-#endif
 		pmap_unuse_l3(pmap, pv->pv_va, *l2, &free);
 		pmap_invalidate_page(pmap, pv->pv_va);
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_next);
@@ -3901,7 +3909,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	/*
 	 * Is the specified virtual address already mapped?
 	 */
-	if ((orig_l3 & ATTR_AF) != 0) {
+	if (orig_l3 != 0) {
 		/*
 		 * Wiring change, just update stats. We don't worry about
 		 * wiring PT pages as they remain resident as long as there
@@ -3959,14 +3967,14 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		CHANGE_PV_LIST_LOCK_TO_PHYS(&lock, pa);
 		TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_next);
 		m->md.pv_gen++;
-		if ((new_l3 & (1 << 7)) == ATTR_AP(ATTR_AP_RW))
+		if ((new_l3 & ATTR_AP_RW_BIT) == ATTR_AP(ATTR_AP_RW))
 			vm_page_aflag_set(m, PGA_WRITEABLE);
 	}
 
 	/*
-	 * Update the PTE.
+	 * Update the L3 entry.
 	 */
-	if ((orig_l3 & ATTR_AF) != 0) {
+	if (orig_l3 != 0) {
 validate:
 		orig_l3 = *l3;
 		*l3 = new_l3;
@@ -3975,13 +3983,10 @@ validate:
 		if (opa != pa) {
 			if ((orig_l3 & ATTR_SW_MANAGED) != 0) {
 				om = PHYS_TO_VM_PAGE(opa);
-#if 0
-				if ((origpte & (PG_M | PG_RW)) == (PG_M |
-				    PG_RW))
+				if (pmap_page_dirty(orig_l3))
 					vm_page_dirty(om);
-				if ((origpte & PG_A) != 0)
+				if ((orig_l3 & ATTR_AF) != 0)
 					vm_page_aflag_set(om, PGA_REFERENCED);
-#endif
 				CHANGE_PV_LIST_LOCK_TO_PHYS(&lock, opa);
 				pmap_pvh_free(&om->md, pmap, va);
 #if 0
@@ -3992,27 +3997,11 @@ validate:
 					vm_page_aflag_clear(om, PGA_WRITEABLE);
 #endif
 			}
-#if 0
-		} else if ((newpte & PG_M) == 0 && (origpte & (PG_M |
-		    PG_RW)) == (PG_M | PG_RW)) {
-			if ((origpte & PG_MANAGED) != 0)
+		} else if (pmap_page_dirty(orig_l3)) {
+			if ((orig_l3 & ATTR_SW_MANAGED) != 0)
 				vm_page_dirty(m);
-
-			/*
-			 * Although the PTE may still have PG_RW set, TLB
-			 * invalidation may nonetheless be required because
-			 * the PTE no longer has PG_M set.
-			 */
-		} else if ((origpte & PG_NX) != 0 || (newpte & PG_NX) == 0) {
-			/*
-			 * This PTE change does not require TLB invalidation.
-			 */
-			goto unchanged;
-#endif
 		}
-#if 0
-		if ((origpte & PG_A) != 0)
-#endif
+		if ((orig_l3 & ATTR_AF) != 0)
 			pmap_invalidate_page(pmap, va);
 	} else
 		*l3 = new_l3;
@@ -5097,15 +5086,9 @@ pmap_remove_pages(pmap_t pmap)
 				/*
 				 * Update the vm_page_t clean/reference bits.
 				 */
-				if ((tl3 & (1 << 7)) == ATTR_AP(ATTR_AP_RW)) {
-#if 0
-					if (superpage) {
-						for (mt = m; mt < &m[NBPDR / PAGE_SIZE]; mt++)
-							vm_page_dirty(mt);
-					} else
-#endif
-						vm_page_dirty(m);
-				}
+				if ((tl3 & ATTR_AP_RW_BIT) ==
+				    ATTR_AP(ATTR_AP_RW))
+					vm_page_dirty(m);
 
 				CHANGE_PV_LIST_LOCK_TO_VM_PAGE(&lock, m);
 
