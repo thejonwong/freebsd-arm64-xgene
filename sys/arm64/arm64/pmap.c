@@ -3302,7 +3302,7 @@ pmap_remove_l3(pmap_t pmap, pt_entry_t *l3, vm_offset_t va,
 	/* TODO: Does this need to be atomic like amd64? */
 	old_l3 = *l3;
 	*l3 = 0;
-	if (old_l3 & ATTR_SW_W)
+	if (old_l3 & ATTR_SW_WIRED)
 		pmap->pm_stats.wired_count -= 1;
 	pmap_resident_count_dec(pmap, 1);
 	if (old_l3 & ATTR_SW_MANAGED) {
@@ -3532,7 +3532,7 @@ pmap_remove_all(vm_page_t m)
 		l3 = pmap_l2_to_l3(l2, pv->pv_va);
 		tl3 = *l3;
 		*l3 = 0;
-		if (tl3 & ATTR_SW_W)
+		if (tl3 & ATTR_SW_WIRED)
 			pmap->pm_stats.wired_count--;
 #if 0
 		if (tpte & PG_A)
@@ -3835,7 +3835,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if ((prot & VM_PROT_WRITE) == 0)
 		new_l3 |= ATTR_AP(ATTR_AP_RO);
 	if ((flags & PMAP_ENTER_WIRED) != 0)
-		new_l3 |= ATTR_SW_W;
+		new_l3 |= ATTR_SW_WIRED;
 	if ((va >> 63) == 0)
 		new_l3 |= ATTR_AP(ATTR_AP_USER);
 	new_l3 |= ATTR_IDX(m->md.pv_memattr);
@@ -3909,10 +3909,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * the PT page will be also.
 		 */
 		if ((flags & PMAP_ENTER_WIRED) != 0 &&
-		    (orig_l3 & ATTR_SW_W) == 0)
+		    (orig_l3 & ATTR_SW_WIRED) == 0)
 			pmap->pm_stats.wired_count++;
 		else if ((flags & PMAP_ENTER_WIRED) == 0 &&
-		    (orig_l3 & ATTR_SW_W) != 0)
+		    (orig_l3 & ATTR_SW_WIRED) != 0)
 			pmap->pm_stats.wired_count--;
 
 		/*
@@ -3945,7 +3945,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		/*
 		 * Increment the counters.
 		 */
-		if ((new_l3 & ATTR_SW_W) != 0)
+		if ((new_l3 & ATTR_SW_WIRED) != 0)
 			pmap->pm_stats.wired_count++;
 		pmap_resident_count_inc(pmap, 1);
 	}
@@ -4900,7 +4900,7 @@ restart:
 			}
 		}
 		l3 = pmap_l3(pmap, pv->pv_va);
-		if (l3 != NULL && (*l3 & ATTR_SW_W) != 0)
+		if (l3 != NULL && (*l3 & ATTR_SW_WIRED) != 0)
 			count++;
 		PMAP_UNLOCK(pmap);
 	}
@@ -5069,7 +5069,7 @@ pmap_remove_pages(pmap_t pmap)
 /*
  * We cannot remove wired pages from a process' mapping at this time
  */
-				if (tl3 & ATTR_SW_W) {
+				if (tl3 & ATTR_SW_WIRED) {
 					allfree = 0;
 					continue;
 				}
