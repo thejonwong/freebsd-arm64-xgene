@@ -335,7 +335,7 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld, int flags,
 				    def->st_value;
 			} else {
 				rtld_printf(
-				    "%s: TODO: Relocate unaligned %p %llu\n",
+				    "%s: TODO: Relocate unaligned %p %lu\n",
 				    obj->path, where, ELF_R_TYPE(rela->r_info));
 				return (-1);
 			}
@@ -353,13 +353,13 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld, int flags,
 				    rela->r_addend);
 			} else {
 				rtld_printf(
-				    "%s: TODO: Relocate unaligned %p %llu\n",
+				    "%s: TODO: Relocate unaligned %p %lu\n",
 				    obj->path, where, ELF_R_TYPE(rela->r_info));
 				return (-1);
 			}
 			break;
 		default:
-			rtld_printf("%s: Unhandled relocation %llu\n",
+			rtld_printf("%s: Unhandled relocation %lu\n",
 			    obj->path, ELF_R_TYPE(rela->r_info));
 			return (-1);
 			break;
