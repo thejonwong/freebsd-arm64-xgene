@@ -3651,6 +3651,9 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		}
 	}
 	PMAP_UNLOCK(pmap);
+
+	/* TODO: Only invalidate entries we are touching */
+	pmap_invalidate_all(pmap);
 }
 
 #if 0
