@@ -66,8 +66,18 @@ struct arm64_intr {
 	enum intr_polarity	i_pol;
 
 	u_int			i_irq;		/* Interrupt number */
+	u_int			i_cntidx;	/* Index in intrcnt table */
 	u_int			i_handlers;	/* Allocated handlers */
+	u_long			*i_cntp;	/* Interrupt hit counter */
 };
+
+/* Counts and names for statistics - see sys/sys/interrupt.h */
+u_long intrcnt[NIRQS];
+char intrnames[NIRQS * INTRNAME_LEN];
+size_t sintrcnt = sizeof(intrcnt);
+size_t sintrnames = sizeof(intrnames);
+
+static u_int intrcntidx;	/* Current index into intrcnt table */
 
 /*
  * Table of interrupts that have been set-up.
@@ -91,6 +101,15 @@ SYSINIT(intr_init, SI_SUB_INTR, SI_ORDER_FIRST, intr_init, NULL);
 /*
  * Helper routines.
  */
+
+/* Set interrupt name for statistics */
+static void
+intrcnt_setname(const char *name, u_int idx)
+{
+
+	snprintf(&intrnames[idx * INTRNAME_LEN], INTRNAME_LEN, "%-*s",
+	    INTRNAME_LEN - 1, name);
+}
 
 /*
  * Get intr structure for the given interrupt number.
@@ -120,6 +139,8 @@ intr_acquire(u_int irq)
 	intr->i_trig = INTR_TRIGGER_CONFORM;
 	intr->i_pol = INTR_POLARITY_CONFORM;
 	intr->i_irq = irq;
+	intr->i_cntidx = atomic_fetchadd_int(&intrcntidx, 1);
+	intr->i_cntp = &intrcnt[intr->i_cntidx];
 	arm64_intrs[irq] = intr;
 out:
 	mtx_unlock(&intr_table_lock);
@@ -260,6 +281,7 @@ arm_setup_intr(const char *name, driver_filter_t *filt, driver_intr_t handler,
 
 	if (!error) {
 		mtx_lock(&intr_table_lock);
+		intrcnt_setname(intr->i_event->ie_fullname, intr->i_cntidx);
 		intr->i_handlers++;
 
 		if (!cold && intr->i_handlers == 1) {
@@ -290,6 +312,7 @@ arm_teardown_intr(void *cookie)
 		intr->i_handlers--;
 		if (intr->i_handlers == 0)
 			PIC_MASK(root_pic, intr->i_irq);
+		intrcnt_setname(intr->i_event->ie_fullname, intr->i_cntidx);
 		mtx_unlock(&intr_table_lock);
 	}
 
@@ -322,6 +345,8 @@ arm_dispatch_intr(u_int irq, struct trapframe *tf)
 	intr = arm64_intrs[irq];
 	if (intr == NULL)
 		goto stray;
+
+	(*intr->i_cntp)++;
 
 	if (!intr_event_handle(intr->i_event, tf))
 		return;

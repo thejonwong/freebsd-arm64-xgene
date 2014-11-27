@@ -25,25 +25,6 @@
  *
  */
 
-/*
- * Interrupt counters for vmstat.
- * TODO: These could live in a .c file.
- */
-	.data
-	.globl intrcnt
-	.globl sintrcnt
-	.globl intrnames
-	.globl sintrnames
-
-intrnames:
-	.space	8
-sintrnames:
-	.quad	8
-intrcnt:
-	.space	8 * 8 /* u_long[8] */
-sintrcnt:
-	.quad	8
-
 	.text
 #define	EMIT(x)			\
 	mov	x0, x;		\
