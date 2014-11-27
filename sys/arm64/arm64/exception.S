@@ -26,10 +26,6 @@
  */
 
 	.text
-#define	EMIT(x)			\
-	mov	x0, x;		\
-	mov	x1, 0x1c090000; \
-	str	x0, [x1];
 
 .macro	save_registers el
 	stp	x28, x29, [sp, #-16]!
