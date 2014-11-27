@@ -84,7 +84,7 @@ static void
 configure_first(void *dummy)
 {
 
-	/* nexus0 is the top of the mips device tree */
+	/* nexus0 is the top of the device tree */
 	device_add_child(root_bus, "nexus", 0);
 }
 
