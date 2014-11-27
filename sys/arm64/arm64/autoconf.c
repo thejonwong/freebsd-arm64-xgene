@@ -64,7 +64,7 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <netinet/in.h>
 
-#include <machine/cpufunc.h>
+#include <machine/intr.h>
 #include <machine/md_var.h>
 
 static void	configure_first(void *);
@@ -99,7 +99,7 @@ configure(void *dummy)
 static void
 configure_final(void *dummy)
 {
-	intr_enable();
+	arm_enable_intr();
 	cninit_finish(); 
 
 	if (bootverbose)

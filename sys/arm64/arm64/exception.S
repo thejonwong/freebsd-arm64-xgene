@@ -114,7 +114,7 @@ handle_el1h_sync:
 handle_el1h_irq:
 	save_registers 1
 	mov	x0, sp
-	bl	cpu_intr
+	bl	arm_cpu_intr
 	restore_registers 1
 	eret
 
@@ -131,7 +131,7 @@ handle_el0_sync:
 handle_el0_irq:
 	save_registers 0
 	mov	x0, sp
-	bl	cpu_intr
+	bl	arm_cpu_intr
 	restore_registers 0
 	eret
 

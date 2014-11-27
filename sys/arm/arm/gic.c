@@ -282,7 +282,7 @@ arm_gic_attach(device_t dev)
 	sc->nirqs = gic_d_read_4(GICD_TYPER);
 	sc->nirqs = 32 * ((sc->nirqs & 0x1f) + 1);
 
-	cpu_set_pic(dev, sc->nirqs);
+	arm_register_pic(dev, sc->nirqs);
 
 	icciidr = gic_c_read_4(GICC_IIDR);
 	device_printf(dev,"pn 0x%x, arch 0x%x, rev 0x%x, implementer 0x%x irqs %u\n",
@@ -371,7 +371,7 @@ static void gic_dispatch(device_t dev, struct trapframe *frame)
 			return;
 		}
 
-		cpu_dispatch_intr(active_irq, frame);
+		arm_dispatch_intr(active_irq, frame);
 		first = 0;
 	}
 }

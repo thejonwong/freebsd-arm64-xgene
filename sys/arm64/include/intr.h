@@ -29,12 +29,15 @@
 #ifndef _MACHINE_INTR_H_
 #define _MACHINE_INTR_H_
 
-void cpu_set_pic(device_t, u_int);
-void cpu_establish_intr(const char *, driver_filter_t *, void (*)(void*),
-    void *, int, int, void **);
-void cpu_dispatch_intr(u_int, struct trapframe *);
-void cpu_intr(struct trapframe *);
-void arm_mask_irq(u_int);
-void arm_unmask_irq(u_int);
+int	arm_config_intr(u_int, enum intr_trigger, enum intr_polarity);
+void	arm_cpu_intr(struct trapframe *);
+void	arm_dispatch_intr(u_int, struct trapframe *);
+int	arm_enable_intr(void);
+void	arm_mask_irq(u_int);
+void	arm_register_pic(device_t, u_int);
+int	arm_setup_intr(const char *, driver_filter_t *, driver_intr_t,
+				void *, u_int, enum intr_type, void **);
+int	arm_teardown_intr(void *);
+void	arm_unmask_irq(u_int);
 
 #endif	/* _MACHINE_INTR_H */

@@ -232,41 +232,35 @@ static int
 nexus_config_intr(device_t dev, int irq, enum intr_trigger trig,
     enum intr_polarity pol)
 {
-#if 0
-	int ret = ENODEV;
 
-	if (arm_config_irq)
-		ret = (*arm_config_irq)(irq, trig, pol);
-
-	return (ret);
-#endif
-	panic("nexus_config_intr");
+	return (arm_config_intr(irq, trig, pol));
 }
 
 static int
 nexus_setup_intr(device_t dev, device_t child, struct resource *res, int flags,
     driver_filter_t *filt, driver_intr_t *intr, void *arg, void **cookiep)
 {
-	int irq;
+	int error;
 
 	if ((rman_get_flags(res) & RF_SHAREABLE) == 0)
 		flags |= INTR_EXCL;
 
-	for (irq = rman_get_start(res); irq <= rman_get_end(res); irq++) {
-		cpu_establish_intr(device_get_nameunit(child), filt, intr,
-		    arg, irq, flags, cookiep);
-	}
-	return (0);
+	/* We depend here on rman_activate_resource() being idempotent. */
+	error = rman_activate_resource(res);
+	if (error)
+		return (error);
+
+	error = arm_setup_intr(device_get_nameunit(child), filt, intr,
+	    arg, rman_get_start(res), flags, cookiep);
+
+	return (error);
 }
 
 static int
 nexus_teardown_intr(device_t dev, device_t child, struct resource *r, void *ih)
 {
 
-#if 0
-	return (arm_remove_irqhandler(rman_get_start(r), ih));
-#endif
-	panic("nexus_teardown_intr");
+	return (arm_teardown_intr(ih));
 }
 
 static int
