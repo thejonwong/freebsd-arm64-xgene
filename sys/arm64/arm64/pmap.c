@@ -122,6 +122,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/proc.h>
 #include <sys/rwlock.h>
 #include <sys/sx.h>
+#include <sys/vmem.h>
 #include <sys/vmmeter.h>
 #include <sys/sched.h>
 #include <sys/sysctl.h>
@@ -6620,7 +6621,117 @@ done:
 	PMAP_UNLOCK(pmap);
 	*num = idx;
 }
+#endif
 
+/**
+ * Get the kernel virtual address of a set of physical pages. If there are
+ * physical addresses not covered by the DMAP perform a transient mapping
+ * that will be removed when calling pmap_unmap_io_transient.
+ *
+ * \param page        The pages the caller wishes to obtain the virtual
+ *                    address on the kernel memory map.
+ * \param vaddr       On return contains the kernel virtual memory address
+ *                    of the pages passed in the page parameter.
+ * \param count       Number of pages passed in.
+ * \param can_fault   TRUE if the thread using the mapped pages can take
+ *                    page faults, FALSE otherwise.
+ *
+ * \returns TRUE if the caller must call pmap_unmap_io_transient when
+ *          finished or FALSE otherwise.
+ *
+ */
+boolean_t
+pmap_map_io_transient(vm_page_t page[], vm_offset_t vaddr[], int count,
+    boolean_t can_fault)
+{
+	vm_paddr_t paddr;
+	boolean_t needs_mapping;
+	//pt_entry_t *pte;
+	int /*cache_bits,*/ error, i;
+
+	/*
+	 * Allocate any KVA space that we need, this is done in a separate
+	 * loop to prevent calling vmem_alloc while pinned.
+	 */
+	needs_mapping = FALSE;
+	for (i = 0; i < count; i++) {
+		paddr = VM_PAGE_TO_PHYS(page[i]);
+		if (__predict_false(paddr >= DMAP_MAX_PHYSADDR)) {
+			error = vmem_alloc(kernel_arena, PAGE_SIZE,
+			    M_BESTFIT | M_WAITOK, &vaddr[i]);
+			KASSERT(error == 0, ("vmem_alloc failed: %d", error));
+			needs_mapping = TRUE;
+		} else {
+			vaddr[i] = PHYS_TO_DMAP(paddr);
+		}
+	}
+
+	/* Exit early if everything is covered by the DMAP */
+	if (!needs_mapping)
+		return (FALSE);
+
+	/*
+	 * NB:  The sequence of updating a page table followed by accesses
+	 * to the corresponding pages used in the !DMAP case is subject to
+	 * the situation described in the "AMD64 Architecture Programmer's
+	 * Manual Volume 2: System Programming" rev. 3.23, "7.3.1 Special
+	 * Coherency Considerations".  Therefore, issuing the INVLPG right
+	 * after modifying the PTE bits is crucial.
+	 */
+	if (!can_fault)
+		sched_pin();
+	for (i = 0; i < count; i++) {
+		paddr = VM_PAGE_TO_PHYS(page[i]);
+		if (paddr >= DMAP_MAX_PHYSADDR) {
+			panic(
+			   "pmap_map_io_transient: TODO: Map out of DMAP data");
+#if 0
+			if (can_fault) {
+				/*
+				 * Slow path, since we can get page faults
+				 * while mappings are active don't pin the
+				 * thread to the CPU and instead add a global
+				 * mapping visible to all CPUs.
+				 */
+				pmap_qenter(vaddr[i], &page[i], 1);
+			} else {
+				pte = vtopte(vaddr[i]);
+				cache_bits = pmap_cache_bits(kernel_pmap,
+				    page[i]->md.pat_mode, 0);
+				pte_store(pte, paddr | X86_PG_RW | X86_PG_V |
+				    cache_bits);
+				invlpg(vaddr[i]);
+			}
+#endif
+		}
+	}
+
+	return (needs_mapping);
+}
+
+void
+pmap_unmap_io_transient(vm_page_t page[], vm_offset_t vaddr[], int count,
+    boolean_t can_fault)
+{
+	vm_paddr_t paddr;
+	int i;
+
+	if (!can_fault)
+		sched_unpin();
+	for (i = 0; i < count; i++) {
+		paddr = VM_PAGE_TO_PHYS(page[i]);
+		if (paddr >= DMAP_MAX_PHYSADDR) {
+			panic("pmap_unmap_io_transient: TODO: Unmap data");
+#if 0
+			if (can_fault)
+				pmap_qremove(vaddr[i], 1);
+			vmem_free(kernel_arena, vaddr[i], PAGE_SIZE);
+#endif
+		}
+	}
+}
+
+#if 0
 #include "opt_ddb.h"
 #ifdef DDB
 #include <ddb/ddb.h>
