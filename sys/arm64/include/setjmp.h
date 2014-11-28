@@ -1,6 +1,10 @@
 /*-
  * Copyright (c) 1998 John Birrell <jb@cimlogic.com.au>.
+ * Copyright (c) 2014 The FreeBSD Foundation
  * All rights reserved.
+ *
+ * Portions of this software were developed by Andrew Turner
+ * under sponsorship from the FreeBSD Foundation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,15 +40,22 @@
 #include <sys/cdefs.h>
 
 /*
- * We nned to sore: the sp + lr + 11 gp registers + 8 fp registers,
- * i.e. 21 values, this can be rounded up to 32 to give us some space to
- * expand into without affecting the ABI.
+ * We need to sore:
+ *  - The stack pointer
+ *  - The link register
+ *  - 11 general purpose registers
+ *  - 8 floating point registers
+ *  - The signal mask (128 bits)
+ * i.e. 23 64-bit words, this can be rounded up to 32 to give us some
+ * space to expand into without affecting the ABI.
  * XXX: Is this enough spacce for expansion?
  *
- * The registers to save are: r19 to r29, and v8 to v15.
+ * The registers to save are: r19 to r29, and d8 to d15.
  */
 #define	_JBLEN		32
+#define	_JB_SIGMASK	21
 
+#ifndef __ASSEMBLER__
 /*
  * jmp_buf and sigjmp_buf are encapsulated in different structs to force
  * compile-time diagnostics for mismatches.  The structs are the same
@@ -55,5 +66,6 @@ typedef struct _sigjmp_buf { long _sjb[_JBLEN + 1]; } sigjmp_buf[1];
 #endif
 
 typedef struct _jmp_buf { long _jb[_JBLEN + 1]; } jmp_buf[1];
+#endif /* __ASSEMBLER__ */
 
 #endif /* !_MACHINE_SETJMP_H_ */
