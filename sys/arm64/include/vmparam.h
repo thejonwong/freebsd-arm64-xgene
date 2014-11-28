@@ -171,9 +171,12 @@
 #define	DMAP_MIN_ADDRESS	(0xffffffc000000000UL)
 #define	DMAP_MAX_ADDRESS	(0xffffffcfffffffffUL)
 
+#define	DMAP_MIN_PHYSADDR	(0x0000000000000000UL)
+#define	DMAP_MAX_PHYSADDR	(DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS)
+
 #define	PHYS_TO_DMAP(pa)						\
 ({									\
-	KASSERT(((pa) <= (DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS)),	\
+	KASSERT(((pa) <= DMAP_MAX_PHYSADDR),				\
 	    ("%s: PA out of range, PA: 0x%llx", __func__,		\
 	    (vm_paddr_t)(pa)));						\
 	(pa) | DMAP_MIN_ADDRESS;					\
