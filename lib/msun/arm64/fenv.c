@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2002, 2003 David Schultz <das@FreeBSD.ORG>
- * Copyright (2) 2014 The FreeBSD Foundation
+ * Copyright (c) 2004 David Schultz <das@FreeBSD.ORG>
+ * Copyright (c) 2013 Andrew Turner <andrew@FreeBSD.ORG>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,32 +27,30 @@
  * $FreeBSD$
  */
 
-union IEEEl2bits {
-	long double	e;
-	struct {
-		unsigned long	manl	:64;
-		unsigned long	manh	:48;
-		unsigned int	exp	:15;
-		unsigned int	sign	:1;
-	} bits;
-	/* TODO andrew: Check the packing here */
-	struct {
-		unsigned long	manl	:64;
-		unsigned long	manh	:48;
-		unsigned int	expsign	:16;
-	} xbits;
-};
+#define	__fenv_static
+#include "fenv.h"
 
-#define	LDBL_NBIT	0
-#define	LDBL_IMPLICIT_NBIT
-#define	mask_nbit_l(u)	((void)0)
+/*
+ * Hopefully the system ID byte is immutable, so it's valid to use
+ * this as a default environment.
+ */
+const fenv_t __fe_dfl_env = 0;
 
-#define	LDBL_MANH_SIZE	48
-#define	LDBL_MANL_SIZE	64
+#ifdef __GNUC_GNU_INLINE__
+#error "This file must be compiled with C99 'inline' semantics"
+#endif
 
-#define	LDBL_TO_ARRAY32(u, a) do {			\
-	(a)[0] = (uint32_t)(u).bits.manl;		\
-	(a)[1] = (uint32_t)((u).bits.manl >> 32);	\
-	(a)[2] = (uint32_t)(u).bits.manh;		\
-	(a)[3] = (uint32_t)((u).bits.manh >> 32);	\
-} while(0)
+extern inline int feclearexcept(int __excepts);
+extern inline int fegetexceptflag(fexcept_t *__flagp, int __excepts);
+extern inline int fesetexceptflag(const fexcept_t *__flagp, int __excepts);
+extern inline int feraiseexcept(int __excepts);
+extern inline int fetestexcept(int __excepts);
+extern inline int fegetround(void);
+extern inline int fesetround(int __round);
+extern inline int fegetenv(fenv_t *__envp);
+extern inline int feholdexcept(fenv_t *__envp);
+extern inline int fesetenv(const fenv_t *__envp);
+extern inline int feupdateenv(const fenv_t *__envp);
+extern inline int feenableexcept(int __mask);
+extern inline int fedisableexcept(int __mask);
+extern inline int fegetexcept(void);

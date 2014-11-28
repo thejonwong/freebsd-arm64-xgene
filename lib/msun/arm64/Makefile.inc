@@ -1,5 +1,5 @@
 # $FreeBSD$
 
 #TODO: Check this
-LDBL_PREC = 64
+LDBL_PREC = 113
 
