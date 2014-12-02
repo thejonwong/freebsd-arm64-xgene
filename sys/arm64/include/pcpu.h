@@ -30,6 +30,9 @@
 #ifndef	_MACHINE_PCPU_H_
 #define	_MACHINE_PCPU_H_
 
+#include <machine/cpu.h>
+#include <machine/cpufunc.h>
+
 #define	ALT_STACK_SIZE	128
 
 #define	PCPU_MD_FIELDS							\
@@ -43,13 +46,13 @@ struct pcpu;
 extern struct pcpu *pcpup;
 
 /* XXX: This will only work for a single cluster */
-#define CPU_MASK (0xf)
-
-#define get_pcpu() __extension__ ({			  	\
-    	long id;						\
-        __asm __volatile("mrs %0, mpidr_el1" : "=r" (id));	\
-    	(pcpup + (id & CPU_MASK));				\
-    })
+#define	get_pcpu()			\
+({					\
+	uint64_t mpidr;			\
+					\
+	mpidr = get_mpidr();		\
+	(pcpup + CPU_AFF0(mpidr));	\
+})
 
 static inline struct thread *
 get_curthread(void)
