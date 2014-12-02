@@ -50,16 +50,27 @@
 #define	cpu_setstack(td, sp)	((td)->td_frame->tf_sp = (sp))
 #define	cpu_spinwait()		/* nothing */
 
+/* Extract CPU affinity levels 0-3 */
+#define	CPU_AFF0(mpidr)	(u_int)(((mpidr) >> 0) & 0xff)
+#define	CPU_AFF1(mpidr)	(u_int)(((mpidr) >> 8) & 0xff)
+#define	CPU_AFF2(mpidr)	(u_int)(((mpidr) >> 16) & 0xff)
+#define	CPU_AFF3(mpidr)	(u_int)(((mpidr) >> 32) & 0xff)
+#define	CPU_AFF_MASK	0xff00ffffffUL	/* Mask affinity fields in MPIDR_EL1 */
+
 #ifdef _KERNEL
 
 extern char btext[];
 extern char etext[];
+
+extern uint64_t __cpu_affinity[];
 
 void	cpu_halt(void) __dead2;
 void	cpu_reset(void) __dead2;
 void	fork_trampoline(void);
 void	identify_cpu(void);
 void	swi_vm(void *v);
+
+#define	CPU_AFFINITY(cpu)	__cpu_affinity[(cpu)]
 
 static __inline uint64_t
 get_cyclecount(void)

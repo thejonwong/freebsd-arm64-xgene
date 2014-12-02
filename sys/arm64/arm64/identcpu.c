@@ -33,11 +33,25 @@
 __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
+#include <sys/pcpu.h>
 #include <sys/systm.h>
 
+#include <machine/cpu.h>
 #include <machine/cpufunc.h>
 
 char machine[] = "arm64";
+
+/*
+ * Per-CPU affinity as provided in MPIDR_EL1
+ * Indexed by CPU number in logical order selected by the system.
+ * Relevant fields can be extracetd using CPU_AFFn macros,
+ * Aff3.Aff2.Aff1.Aff0 construct a unique CPU address in the system.
+ *
+ * Fields used by us:
+ * Aff1 - Cluster number
+ * Aff0 - CPU number in Aff1 cluster
+ */
+uint64_t __cpu_affinity[MAXCPU];
 
 #define	CPU_IMPL_ARM		0x41
 #define	CPU_IMPL_BROADCOM	0x42
@@ -109,6 +123,7 @@ identify_cpu(void)
 	u_int midr;
 	u_int impl_id;
 	u_int part_id;
+	uint64_t mpidr;
 	size_t i;
 
 	midr = get_midr();
@@ -135,4 +150,15 @@ identify_cpu(void)
 
 	printf("CPU: %s %s r%dp%d\n", cpu_desc.cpu_impl_name,
 	    cpu_desc.cpu_part_name, CPU_VAR(midr), CPU_REV(midr));
+
+	/*
+	 * Save affinity for the boot CPU.
+	 * (CPU0 in the internal system enumeration.
+	 */
+	mpidr = get_mpidr();
+	CPU_AFFINITY(0) = mpidr & CPU_AFF_MASK;
+
+	if (bootverbose)
+		printf("CPU%u affinity: %u.%u.%u.%u\n", 0, CPU_AFF0(mpidr),
+		    CPU_AFF1(mpidr), CPU_AFF2(mpidr), CPU_AFF3(mpidr));
 }

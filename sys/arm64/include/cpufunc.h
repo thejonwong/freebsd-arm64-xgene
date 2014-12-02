@@ -76,5 +76,15 @@ get_midr(void)
 	return (midr);
 }
 
+static __inline register_t
+get_mpidr(void)
+{
+	uint64_t mpidr;
+
+	__asm __volatile("mrs %0, mpidr_el1" : "=&r" (mpidr));
+
+	return (mpidr);
+}
+
 #endif	/* _KERNEL */
 #endif	/* _MACHINE_CPUFUNC_H_ */
