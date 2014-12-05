@@ -1499,12 +1499,14 @@ PMAP_INLINE void
 pmap_invalidate_page(pmap_t pmap, vm_offset_t va)
 {
 
+	sched_pin();
 	__asm __volatile(
 	    "dsb  sy		\n"
 	    "tlbi vaae1is, %0	\n"
 	    "dsb  sy		\n"
 	    "isb		\n"
 	    : : "r"(va >> PAGE_SHIFT));
+	sched_unpin();
 }
 
 PMAP_INLINE void
@@ -1512,29 +1514,31 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
 	vm_offset_t addr;
 
-	if (pmap == kernel_pmap) {
-		sva >>= PAGE_SHIFT;
-		eva >>= PAGE_SHIFT;
-		__asm __volatile("dsb	sy");
-		for (addr = sva; addr < eva; addr++) {
-			__asm __volatile(
-			    "tlbi vaae1is, %0" : : "r"(addr));
-		}
+	sched_pin();
+	sva >>= PAGE_SHIFT;
+	eva >>= PAGE_SHIFT;
+	__asm __volatile("dsb	sy");
+	for (addr = sva; addr < eva; addr++) {
 		__asm __volatile(
-		    "dsb  sy	\n"
-		    "isb	\n");
+		    "tlbi vaae1is, %0" : : "r"(addr));
 	}
+	__asm __volatile(
+	    "dsb  sy	\n"
+	    "isb	\n");
+	sched_unpin();
 }
 
 PMAP_INLINE void
 pmap_invalidate_all(pmap_t pmap)
 {
 
+	sched_pin();
 	__asm __volatile(
 	    "dsb  sy		\n"
 	    "tlbi vmalle1is	\n"
 	    "dsb  sy		\n"
 	    "isb		\n");
+	sched_unpin();
 }
 
 #if 0
