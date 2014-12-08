@@ -111,6 +111,8 @@ thunder_pcie_attach(device_t dev)
 	int rid;
 	struct thunder_pcie_softc *sc;
 	int error;
+	int ecam, tuple;
+	uint64_t base,size;
 
 	sc = device_get_softc(dev);
 
@@ -132,14 +134,28 @@ thunder_pcie_attach(device_t dev)
 	if (parse_pci_mem_ranges(dev))
 		return (ENXIO);
 
-	return (0); /* remove when rman handling complete */
-
 	/* Initialize rman and allocate memory regions */
 
 	error = rman_init(&sc->mem_rman);
 	if (error) {
 		device_printf(dev, "rman_init() failed. error = %d\n", error);
 		return (error);
+	}
+
+	for (ecam = 0; ecam < ECAM_COUNT; ecam++) {
+		for (tuple = 0; tuple < MAX_RANGES_TUPLES; tuple++) {
+			base = sc->ranges[ecam][tuple].base; 
+			size = sc->ranges[ecam][tuple].size; 
+			if (base == 0 || size == 0)
+				continue; /* empty range element */
+
+			error = rman_manage_region(&sc->mem_rman, base, base + size - 1);
+			if (error) {
+				device_printf(dev, "rman_manage_region() failed. error = %d\n", error);
+				rman_fini(&sc->mem_rman);
+				return (error);
+			}
+		}
 	}
 
 	/* add stuff here */
@@ -194,6 +210,11 @@ parse_pci_mem_ranges(device_t dev)
 		cell_ptr += parent_addr_cells; /* move ptr to size cells*/
 		sc->ranges[ecam][tuple].size = fdt_data_get((void *)cell_ptr, 2);
 		cell_ptr += size_cells; /* move ptr to next tuple*/
+	}
+	for (; tuple < MAX_RANGES_TUPLES; tuple++) {
+		/* zero-fill remaining tuples to mark empty elements in array */
+		sc->ranges[ecam][tuple].base = 0;
+		sc->ranges[ecam][tuple].size = 0;
 	}
 
 	rv = 0;
