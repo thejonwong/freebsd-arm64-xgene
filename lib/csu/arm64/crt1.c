@@ -78,12 +78,9 @@ __asm("	.text			\n"
 "	.globl	_start		\n"
 "	_start:			\n"
 /* TODO: Don't just pass NULL to __start */
-"	mov	x0, xzr		\n"
-"	mov	x1, xzr		\n"
-"	mov	x2, xzr		\n"
-"	mov	x3, xzr		\n"
-"	mov	x4, xzr		\n"
-"	mov	x5, xzr		\n"
+"	mov	x3, x0		\n" /* ps_strings */
+"	mov	x4, x1		\n" /* obj */
+"	mov	x5, x2		\n" /* cleanup */
 "	ldr	x0, [sp]	\n" /* Load argc */
 "	add	x1, sp, #8	\n" /* load argv */
 "	add	x2, x1, x0, lsl #3 \n" /* env is after argv */
@@ -93,22 +90,6 @@ __asm("	.text			\n"
 "	mov	x11, #15	\n"
 "	bic	x10, x10, x11	\n"
 "	mov	sp, x10		\n"
-#if 0
-"	mov	r5, r2		/* cleanup */		\n"
-"	mov	r4, r1		/* obj_main */		\n"
-"	mov	r3, r0		/* ps_strings */	\n"
-"	/* Get argc, argv, and envp from stack */	\n"
-"	ldr	r0, [sp, #0x0000]	\n"
-"	add	r1, sp, #0x0004		\n"
-"	add	r2, r1, r0, lsl #2	\n"
-"	add	r2, r2, #0x0004		\n"
-"	/* Ensure the stack is properly aligned before calling C code. */\n"
-"	bic	sp, sp, #7	\n"
-"	sub	sp, sp, #8	\n"
-"	str	r5, [sp, #4]	\n"
-"	str	r4, [sp, #0]	\n"
-"\n"
-#endif
 "	b	 __start  ");
 
 /* ARGSUSED */
