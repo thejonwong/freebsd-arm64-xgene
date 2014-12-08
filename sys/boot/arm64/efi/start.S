@@ -42,7 +42,7 @@
 #define	INIT_STACK_SIZE			(4096 * 4)
 
 efi_start:
-	/* The MS-DOS Stib, only used to get the offset of the COFF header */
+	/* The MS-DOS Stub, only used to get the offset of the COFF header */
 	.ascii	"MZ"
 	.short	0
 	.space	0x38
