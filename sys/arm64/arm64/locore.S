@@ -33,6 +33,8 @@
 #include <machine/param.h>
 #include <machine/pte.h>
 
+#include "gic_v3.h"
+
 #define	VIRT_BITS	39
 
 	.globl	kernbase
@@ -164,6 +166,18 @@ drop_to_el1:
 
 	mov	x2, #(PSR_F | PSR_I | PSR_A | PSR_D | PSR_M_EL1h)
 	msr	spsr_el2, x2
+
+	/* Configure GICv3 CPU interface */
+	mrs	x2, id_aa64pfr0_el1
+	ubfx	x2, x2, #24, #4		/* GIC field */
+	cmp	x2, #0x1		/* 0001 - SR CPU IF supported */
+	b.ne	2f
+
+	mrs	x2, icc_sre_el2
+	orr	x2, x2, #ICC_SRE_EL2_EN	/* Enable access from insecure EL1 */
+	msr	icc_sre_el2, x2
+	isb
+2:
 
 	/* Set the address to return to our return address */
 	msr	elr_el2, x30
