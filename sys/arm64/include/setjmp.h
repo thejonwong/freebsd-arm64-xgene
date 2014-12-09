@@ -40,20 +40,27 @@
 #include <sys/cdefs.h>
 
 /*
- * We need to sore:
+ * We need to store:
+ *  - A magic value to differentiate the buffers
  *  - The stack pointer
  *  - The link register
  *  - 11 general purpose registers
  *  - 8 floating point registers
  *  - The signal mask (128 bits)
- * i.e. 23 64-bit words, this can be rounded up to 32 to give us some
+ * i.e. 24 64-bit words, this can be rounded up to 32 to give us some
  * space to expand into without affecting the ABI.
- * XXX: Is this enough spacce for expansion?
+ * XXX: Is this enough space for expansion?
  *
  * The registers to save are: r19 to r29, and d8 to d15.
  */
 #define	_JBLEN		32
 #define	_JB_SIGMASK	21
+
+/* This should only be needed in libc and may change */
+#ifdef __ASSEMBLER__
+#define	_JB_MAGIC__SETJMP	0xfb5d25837d7ff700
+#define	_JB_MAGIC_SETJMP	0xfb5d25837d7ff701
+#endif
 
 #ifndef __ASSEMBLER__
 /*

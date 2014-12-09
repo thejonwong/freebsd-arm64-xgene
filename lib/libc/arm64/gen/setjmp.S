@@ -34,8 +34,7 @@ __FBSDID("$FreeBSD$");
 
 #include <machine/setjmp.h>
 
-ENTRY(__setjmp)
-	WEAK_REFERENCE(__setjmp, setjmp)
+ENTRY(setjmp)
 	sub	sp, sp, #16
 	stp	x0, lr, [sp]
 
@@ -47,6 +46,11 @@ ENTRY(__setjmp)
 
 	ldp	x0, lr, [sp]
 	add	sp, sp, #16
+
+	/* Store the magic value and stack pointer */
+	ldr	x8, .Lmagic
+	mov	x9, sp
+	stp	x8, x9, [x0], #16
 
 	/* Store the general purpose registers and lr */
 	stp	x19, x20, [x0], #16
@@ -60,21 +64,20 @@ ENTRY(__setjmp)
 	stp	d8, d9, [x0], #16
 	stp	d10, d11, [x0], #16
 	stp	d12, d13, [x0], #16
-	stp	d14, d15, [x0], #16
-
-	/* Store the stack pointer */
-	mov	x8, sp
-	str	x8, [x0]
+	stp	d14, d15, [x0]
 
 	/* Return value */
 	mov	x0, #0
 	ret
-END(__setjmp)
+.Lmagic:
+	.align	3
+	.quad	_JB_MAGIC_SETJMP
+END(setjmp)
 
-ENTRY(__longjmp)
-	WEAK_REFERENCE(__longjmp, longjmp)
-	sub	sp, sp, #16
+ENTRY(longjmp)
+	sub	sp, sp, #32
 	stp	x0, lr, [sp]
+	str	x1, [sp, #16]
 
 	/* Restore the signal mask */
 	mov	x1, #0				/* oset */
@@ -82,8 +85,20 @@ ENTRY(__longjmp)
 	mov	x0, #3				/* SIG_BLOCK */
 	bl	sigprocmask
 
+	ldr	x1, [sp, #16]
 	ldp	x0, lr, [sp]
-	add	sp, sp, #16
+	add	sp, sp, #32
+
+	/* Check the magic value */
+	ldr	x8, [x0], #8
+	ldr	x9, .Lmagic
+	cmp	x8, x9
+	b.ne	botch
+
+	/* Restore the stack pointer */
+	ldr	x8, [x0], #8
+	mov	sp, x8
+
 	/* Restore the general purpose registers and lr */
 	ldp	x19, x20, [x0], #16
 	ldp	x21, x22, [x0], #16
@@ -96,14 +111,13 @@ ENTRY(__longjmp)
 	ldp	d8, d9, [x0], #16
 	ldp	d10, d11, [x0], #16
 	ldp	d12, d13, [x0], #16
-	ldp	d14, d15, [x0], #16
-
-	/* Store the stack pointer */
-	ldr	x8, [x0]
-	mov	sp, x8
+	ldp	d14, d15, [x0]
 
 	/* Load the return value */
 	mov	x0, x1
 	ret
-END(__longjmp)
 
+botch:
+	bl	_C_LABEL(longjmperror)
+	bl	_C_LABEL(abort)
+END(longjmp)
