@@ -65,6 +65,7 @@ uint64_t __cpu_affinity[MAXCPU];
 #define	CPU_IMPL_MARVELL	0x56
 #define	CPU_IMPL_INTEL		0x69
 
+#define	CPU_PART_THUNDER	0x0A1
 #define	CPU_PART_CORTEX_A57	0xD00
 #define	CPU_PART_CORTEX_A53	0xD03
 
@@ -110,6 +111,7 @@ struct cpu_parts {
 };
 
 const struct cpu_parts cpu_parts[] = {
+	{ CPU_PART_THUNDER,    "Thunder" },
 	{ CPU_PART_CORTEX_A57, "Cortex-A57" },
 	{ CPU_PART_CORTEX_A53, "Cortex-A53" },
 	{ 0, "Unknown Processor" }
