@@ -559,6 +559,8 @@ initarm(struct arm64_bootparams *abp)
 		kmdp = preload_search_by_type("elf64 kernel");
 
 	boothowto = MD_FETCH(kmdp, MODINFOMD_HOWTO, int);
+	kern_envp = MD_FETCH(kmdp, MODINFOMD_ENVP, char *);
+
 #ifdef FDT
 	try_load_dtb(kmdp);
 #endif

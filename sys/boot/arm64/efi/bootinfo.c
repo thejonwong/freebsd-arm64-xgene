@@ -177,6 +177,45 @@ bi_getboothowto(char *kargs)
 	return(howto);
 }
 
+/*
+ * Copy the environment into the load area starting at (addr).
+ * Each variable is formatted as <name>=<value>, with a single nul
+ * separating each variable, and a double nul terminating the environment.
+ */
+static vm_offset_t
+bi_copyenv(vm_offset_t start)
+{
+	struct env_var *ep;
+	vm_offset_t addr, last;
+	size_t len;
+
+	addr = last = start;
+
+	/* Traverse the environment. */
+	for (ep = environ; ep != NULL; ep = ep->ev_next) {
+		len = strlen(ep->ev_name);
+		if (arm64_efi_copyin(ep->ev_name, addr, len) != len)
+			break;
+		addr += len;
+		if (arm64_efi_copyin("=", addr, 1) != 1)
+			break;
+		addr++;
+		if (ep->ev_value != NULL) {
+			len = strlen(ep->ev_value);
+			if (arm64_efi_copyin(ep->ev_value, addr, len) != len)
+				break;
+			addr += len;
+		}
+		if (arm64_efi_copyin("", addr, 1) != 1)
+			break;
+		last = ++addr;
+	}
+
+	if (arm64_efi_copyin("", last++, 1) != 1)
+		last = start;
+	return(last);
+}
+
 static vm_offset_t
 bi_copymodules(vm_offset_t addr)
 {
@@ -278,6 +317,7 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	struct preloaded_file *xp, *kfp, *dtbfp;
 	struct file_metadata *md;
 	uint64_t kernend;
+	uint64_t envp;
 	vm_offset_t addr, size;
 	vm_offset_t dtbp;
 	int howto;
@@ -293,6 +333,10 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	/* pad to a page boundary */
 	addr = roundup(addr, PAGE_SIZE);
 
+	/* Copy our environment. */
+	envp = addr;
+	addr = bi_copyenv(addr);
+
 	kfp = file_findfile(NULL, "elf kernel");
 	if (kfp == NULL)
 		kfp = file_findfile(NULL, "elf64 kernel");
@@ -301,6 +345,7 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	kernend = 0;	/* fill it in later */
 
 	file_addmetadata(kfp, MODINFOMD_HOWTO, sizeof howto, &howto);
+	file_addmetadata(kfp, MODINFOMD_ENVP, sizeof envp, &envp);
 
 	dtbfp = file_findfile(NULL, "dtb");
 	if (dtbfp != NULL) {
