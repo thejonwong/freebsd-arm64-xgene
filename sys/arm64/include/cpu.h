@@ -1,9 +1,13 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 2014 The FreeBSD Foundation
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * William Jolitz.
+ *
+ * Portions of this software were developed by Andrew Turner
+ * under sponsorship from the FreeBSD Foundation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,6 +68,24 @@ get_cyclecount(void)
 	/* TODO: This is bogus */
 	return (1);
 }
+
+#define	ADDRESS_TRANSLATE_FUNC(stage)				\
+static inline uint64_t						\
+arm64_address_translate_ ##stage (uint64_t addr)		\
+{								\
+	uint64_t ret;						\
+								\
+	__asm __volatile(					\
+	    "at " __STRING(stage) ", %1 \n"					\
+	    "mrs %0, par_el1" : "=r"(ret) : "r"(addr));		\
+								\
+	return (ret);						\
+}
+
+ADDRESS_TRANSLATE_FUNC(s1e0r)
+ADDRESS_TRANSLATE_FUNC(s1e0w)
+ADDRESS_TRANSLATE_FUNC(s1e1r)
+ADDRESS_TRANSLATE_FUNC(s1e1w)
 
 #endif
 
