@@ -2284,6 +2284,11 @@ retry:
 		if (m == NULL && lockp != NULL)
 			goto retry;
 	}
+	/*
+	 * XXXARM64: I'm not sure why we need this but it fixes a crash
+	 * when running things from a shell script.
+	 */
+	pmap_invalidate_all(pmap);
 	return (m);
 }
 
@@ -4285,6 +4290,7 @@ pmap_enter_quick_locked(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	if ((m->oflags & VPO_UNMANAGED) == 0)
 		pa |= ATTR_SW_MANAGED;
 	*l3 = pa;
+	pmap_invalidate_page(pmap, va);
 	return (mpte);
 }
 
@@ -5149,9 +5155,9 @@ pmap_remove_pages(pmap_t pmap)
 			free_pv_chunk(pc);
 		}
 	}
+	pmap_invalidate_all(pmap);
 	if (lock != NULL)
 		rw_wunlock(lock);
-	pmap_invalidate_all(pmap);
 	rw_runlock(&pvh_global_lock);
 	PMAP_UNLOCK(pmap);
 	pmap_free_zero_pages(&free);
