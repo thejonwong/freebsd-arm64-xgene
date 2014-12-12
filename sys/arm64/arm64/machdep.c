@@ -473,7 +473,7 @@ add_physmap_entry(uint64_t base, uint64_t length, vm_paddr_t *physmap,
 	 * Find insertion point while checking for overlap.  Start off by
 	 * assuming the new entry will be added to the end.
 	 */
-	insert_idx = physmap_idx + 2;
+	insert_idx = physmap_idx;
 	for (i = 0; i <= physmap_idx; i += 2) {
 		if (base < physmap[i + 1]) {
 			if (base + length <= physmap[i]) {
@@ -687,7 +687,7 @@ initarm(struct arm64_bootparams *abp)
 
 	/* Print the memory map */
 	mem_len = 0;
-	for (i = 0; i <= physmap_idx; i += 2) {
+	for (i = 0; i < physmap_idx; i += 2) {
 		mem_len += physmap[i + 1] - physmap[i];
 		printf("%llx - %llx\n", physmap[i], physmap[i + 1]);
 	}
