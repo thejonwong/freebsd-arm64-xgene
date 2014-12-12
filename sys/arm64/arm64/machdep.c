@@ -462,9 +462,9 @@ static int
 add_physmap_entry(uint64_t base, uint64_t length, vm_paddr_t *physmap,
     u_int *physmap_idxp)
 {
-	u_int i, insert_idx, physmap_idx;
+	u_int i, insert_idx, _physmap_idx;
 
-	physmap_idx = *physmap_idxp;
+	_physmap_idx = *physmap_idxp;
 
 	if (length == 0)
 		return (1);
@@ -473,8 +473,8 @@ add_physmap_entry(uint64_t base, uint64_t length, vm_paddr_t *physmap,
 	 * Find insertion point while checking for overlap.  Start off by
 	 * assuming the new entry will be added to the end.
 	 */
-	insert_idx = physmap_idx;
-	for (i = 0; i <= physmap_idx; i += 2) {
+	insert_idx = _physmap_idx;
+	for (i = 0; i <= _physmap_idx; i += 2) {
 		if (base < physmap[i + 1]) {
 			if (base + length <= physmap[i]) {
 				insert_idx = i;
@@ -488,7 +488,8 @@ add_physmap_entry(uint64_t base, uint64_t length, vm_paddr_t *physmap,
 	}
 
 	/* See if we can prepend to the next entry. */
-	if (insert_idx <= physmap_idx && base + length == physmap[insert_idx]) {
+	if (insert_idx <= _physmap_idx &&
+	    base + length == physmap[insert_idx]) {
 		physmap[insert_idx] = base;
 		return (1);
 	}
@@ -499,9 +500,9 @@ add_physmap_entry(uint64_t base, uint64_t length, vm_paddr_t *physmap,
 		return (1);
 	}
 
-	physmap_idx += 2;
-	*physmap_idxp = physmap_idx;
-	if (physmap_idx == PHYSMAP_SIZE) {
+	_physmap_idx += 2;
+	*physmap_idxp = _physmap_idx;
+	if (_physmap_idx == PHYSMAP_SIZE) {
 		printf(
 		"Too many segments in the physical address map, giving up\n");
 		return (0);
@@ -511,7 +512,7 @@ add_physmap_entry(uint64_t base, uint64_t length, vm_paddr_t *physmap,
 	 * Move the last 'N' entries down to make room for the new
 	 * entry if needed.
 	 */
-	for (i = physmap_idx; i > insert_idx; i -= 2) {
+	for (i = _physmap_idx; i > insert_idx; i -= 2) {
 		physmap[i] = physmap[i - 2];
 		physmap[i + 1] = physmap[i - 1];
 	}
@@ -527,7 +528,7 @@ add_physmap_entry(uint64_t base, uint64_t length, vm_paddr_t *physmap,
 
 static void
 add_efi_map_entries(struct efi_map_header *efihdr, vm_paddr_t *physmap,
-    u_int *physmap_idx)
+    u_int *physmap_idxp)
 {
 	struct efi_md *map, *p;
 	const char *type;
@@ -611,7 +612,7 @@ add_efi_map_entries(struct efi_map_header *efihdr, vm_paddr_t *physmap,
 		}
 
 		if (!add_physmap_entry(p->md_phys, (p->md_pages * PAGE_SIZE),
-		    physmap, physmap_idx))
+		    physmap, physmap_idxp))
 			break;
 	}
 }
