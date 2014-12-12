@@ -5075,12 +5075,12 @@ pmap_remove_pages(pmap_t pmap)
 				KASSERT(m->phys_addr == pa,
 				    ("vm_page_t %p phys_addr mismatch %016jx %016jx",
 				    m, (uintmax_t)m->phys_addr,
-				    (uintmax_t)tpte));
+				    (uintmax_t)tl3));
 
 				KASSERT((m->flags & PG_FICTITIOUS) != 0 ||
 				    m < &vm_page_array[vm_page_array_size],
-				    ("pmap_remove_pages: bad tpte %#jx",
-				    (uintmax_t)tpte));
+				    ("pmap_remove_pages: bad l3 %#jx",
+				    (uintmax_t)tl3));
 
 				*l3 = 0;
 
