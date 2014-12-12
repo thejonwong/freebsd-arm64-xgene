@@ -3656,7 +3656,8 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		va = va_next;
 		for (l3 = pmap_l2_to_l3(l2, sva); sva != va_next; l3++,
 		    sva += L3_SIZE) {
-			*l3 |= ATTR_AP(ATTR_AP_RO);
+			if (*l3 != 0)
+				*l3 |= ATTR_AP(ATTR_AP_RO);
 		}
 	}
 	PMAP_UNLOCK(pmap);
