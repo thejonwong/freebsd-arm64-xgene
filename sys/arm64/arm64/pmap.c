@@ -1012,39 +1012,7 @@ pmap_bootstrap(vm_offset_t l1pt, vm_paddr_t kernstart, vm_size_t kernlen)
 		pa += L2_SIZE;
 	}
 
-	/* And map the rest of L2 table */
-	for (; l2_slot < Ln_ENTRIES; l2_slot++) {
-		KASSERT(l2[l2_slot] == 0, ("Invalid bootstrap L2 table"));
-		KASSERT(((va >> L2_SHIFT) & Ln_ADDR_MASK) == l2_slot,
-		    ("VA inconsistency detected"));
-
-		/*
-		 * Check if we can use the current pa, some of it
-		 * may fall out side the current physmap slot.
-		 */
-		if (pa + L2_SIZE > physmap[map_slot + 1]) {
-			map_slot += 2;
-			pa = physmap[map_slot];
-			pa = roundup2(pa, L2_SIZE);
-
-			/* TODO: should we wrap if we hit this? */
-			KASSERT(map_slot < physmap_idx,
-			    ("Attempting to use invalid physical memory"));
-			/* TODO: This should be easy to fix */
-			KASSERT(pa + L2_SIZE < physmap[map_slot + 1],
-			    ("Physical slot too small"));
-		}
-
-		/*
-		 * TODO: Turn the cache on here when we have cache
-		 * flushing code.
-		 */
-		l2[l2_slot] = (pa & ~L2_OFFSET) | ATTR_AF | L2_BLOCK |
-		    ATTR_IDX(UNCACHED_MEMORY);
-
-		va += L2_SIZE;
-		pa += L2_SIZE;
-	}
+	va = roundup2(va, L1_SIZE);
 
 	freemempos = KERNBASE + kernlen;
 	freemempos = roundup2(freemempos, PAGE_SIZE);

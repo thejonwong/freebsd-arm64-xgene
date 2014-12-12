@@ -275,12 +275,21 @@ create_pagetables:
 	 * Build the TTBR1 maps.
 	 */
 
+	/* Find the size of the kernel */
+	mov	x6, #(KERNBASE)
+	ldr	x7, .Lend
+	/* Find the end - begin */
+	sub	x8, x7, x6
+	/* Get the number of l2 pages to allocate, rounded down */
+	lsr	x10, x8, #(L2_SHIFT)
+	/* Add 4 MiB for any rounding above and the module data */
+	add	x10, x10, #2
+
 	/* Create the kernel space L2 table */
 	mov	x6, x26
 	mov	x7, #1
 	mov	x8, #(KERNBASE & L2_BLOCK_MASK)
 	mov	x9, x28
-	mov	x10, #16 /* 32MiB. TODO: Make this depend on the kernel size */
 	bl	build_block_pagetable
 
 	/* Move to the l1 table */
