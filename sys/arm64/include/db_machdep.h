@@ -34,25 +34,25 @@
 #include <machine/trap.h>
 
 #define T_BREAKPOINT	(1)
+#define T_WATCHPOINT	(2)
 
 typedef vm_offset_t	db_addr_t;
 typedef long		db_expr_t;
 
 #define	PC_REGS()	((db_addr_t)kdb_thrctx->pcb_pc)
 
-/* This is a brk instruction, TODO: Is this correct? */
 #define	BKPT_INST	(0xd4200000)
 #define	BKPT_SIZE	(4)
 #define	BKPT_SET(inst)	(BKPT_INST)
 
 #define	BKPT_SKIP do {							\
-	kdb_frame->tf_pc += BKPT_SIZE; \
+	kdb_frame->tf_elr += BKPT_SIZE; \
 } while (0)
 
 #define SOFTWARE_SSTEP	1
 
 #define	IS_BREAKPOINT_TRAP(type, code)	(type == T_BREAKPOINT)
-#define	IS_WATCHPOINT_TRAP(type, code)	(0)
+#define	IS_WATCHPOINT_TRAP(type, code)	(type == T_WATCHPOINT)
 
 #define	inst_trap_return(ins)	(0)
 /* ret */
