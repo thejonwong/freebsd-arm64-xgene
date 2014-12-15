@@ -31,6 +31,9 @@
 
 #ifndef LOCORE
 
+#include <sys/signal.h>
+#include <sys/ucontext.h>
+
 /*
  * NOTE: keep this structure in sync with struct reg and struct mcontext.
  */
@@ -40,6 +43,14 @@ struct trapframe {
 	uint64_t tf_elr;
 	uint64_t tf_spsr;
 	uint64_t tf_x[30];
+};
+
+/*
+ * Signal frame, pushedonto the user stack
+ */
+struct sigframe {
+	siginfo_t       sf_si;          /* actual saved siginfo */
+	ucontext_t      sf_uc;          /* actual saved ucontext */
 };
 
 /*

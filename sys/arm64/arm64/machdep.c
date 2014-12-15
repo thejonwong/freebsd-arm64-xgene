@@ -37,6 +37,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/cons.h>
 #include <sys/cpu.h>
 #include <sys/efi.h>
+#include <sys/exec.h>
 #include <sys/imgact.h>
 #include <sys/kdb.h> 
 #include <sys/kernel.h>
@@ -48,6 +49,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/rwlock.h>
 #include <sys/sched.h>
 #include <sys/signalvar.h>
+#include <sys/syscallsubr.h>
+#include <sys/sysent.h>
 #include <sys/sysproto.h>
 #include <sys/ucontext.h>
 
@@ -190,18 +193,44 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 	tf->tf_elr = imgp->entry_addr;
 }
 
+/* Sanity check these are the same size, they will be memcpy'd to and fro */
+CTASSERT(sizeof(((struct trapframe *)0)->tf_x) ==
+    sizeof((mcontext_t *)0)->mc_regs);
+
 int
 get_mcontext(struct thread *td, mcontext_t *mcp, int clear_ret)
 {
+	struct trapframe *tf = td->td_frame;
 
-	panic("get_mcontext");
+	if (clear_ret & GET_MC_CLEAR_RET)
+		mcp->mc_regs[0] = 0;
+	else
+		mcp->mc_regs[0] = tf->tf_x[0];
+
+	memcpy(&mcp->mc_regs[1], &tf->tf_x[1],
+	    sizeof(mcp->mc_regs[0]) * (nitems(mcp->mc_regs) - 1));
+
+	mcp->mc_sp = tf->tf_sp;
+	mcp->mc_lr = tf->tf_lr;
+	mcp->mc_elr = tf->tf_elr;
+	mcp->mc_spsr = tf->tf_spsr;
+
+	return (0);
 }
 
 int
 set_mcontext(struct thread *td, const mcontext_t *mcp)
 {
+	struct trapframe *tf = td->td_frame;
 
-	panic("set_mcontext");
+	memcpy(tf->tf_x, mcp->mc_regs, sizeof(tf->tf_x));
+
+	tf->tf_sp = mcp->mc_sp;
+	tf->tf_lr = mcp->mc_lr;
+	tf->tf_elr = mcp->mc_elr;
+	tf->tf_spsr = mcp->mc_spsr;
+
+	return (0);
 }
 
 void
@@ -290,8 +319,19 @@ struct sigreturn_args {
 int
 sys_sigreturn(struct thread *td, struct sigreturn_args *uap)
 {
+	ucontext_t uc;
 
-	panic("sys_sigreturn");
+	if (uap == NULL)
+		return (EFAULT);
+	if (copyin(uap->sigcntxp, &uc, sizeof(uc)))
+		return (EFAULT);
+
+	set_mcontext(td, &uc.uc_mcontext);
+
+	/* Restore signal mask. */
+	kern_sigprocmask(td, SIG_SETMASK, &uc.uc_sigmask, NULL, 0);
+
+	return (EJUSTRETURN);
 }
 
 /*
@@ -311,8 +351,79 @@ makectx(struct trapframe *tf, struct pcb *pcb)
 void
 sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 {
+	struct thread *td;
+	struct proc *p;
+	struct trapframe *tf;
+	struct sigframe *fp, frame;
+	struct sigacts *psp;
+	int code, onstack, sig;
 
-	panic("sendsig");
+	td = curthread;
+	p = td->td_proc;
+	PROC_LOCK_ASSERT(p, MA_OWNED);
+
+	sig = ksi->ksi_signo;
+	code = ksi->ksi_code;
+	psp = p->p_sigacts;
+	mtx_assert(&psp->ps_mtx, MA_OWNED);
+
+	tf = td->td_frame;
+	onstack = sigonstack(tf->tf_sp);
+
+	CTR4(KTR_SIG, "sendsig: td=%p (%s) catcher=%p sig=%d", td, p->p_comm,
+	    catcher, sig);
+
+	/* Allocate and validate space for the signal handler context. */
+	if ((td->td_pflags & TDP_ALTSTACK) != 0 && !onstack &&
+	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
+		fp = (struct sigframe *)(td->td_sigstk.ss_sp +
+		    td->td_sigstk.ss_size);
+#if defined(COMPAT_43)
+		td->td_sigstk.ss_flags |= SS_ONSTACK;
+#endif
+	} else {
+		fp = (struct sigframe *)td->td_frame->tf_sp;
+	}
+
+	/* Make room, keeping the stack aligned */
+	fp--;
+	fp = (struct sigframe *)STACKALIGN(fp);
+
+	/* Fill in the frame to copy out */
+	get_mcontext(td, &frame.sf_uc.uc_mcontext, 0);
+	frame.sf_si = ksi->ksi_info;
+	frame.sf_uc.uc_sigmask = *mask;
+	frame.sf_uc.uc_stack.ss_flags = (td->td_pflags & TDP_ALTSTACK) ?
+	    ((onstack) ? SS_ONSTACK : 0) : SS_DISABLE;
+	frame.sf_uc.uc_stack = td->td_sigstk;
+	mtx_unlock(&psp->ps_mtx);
+	PROC_UNLOCK(td->td_proc);
+
+	/* Copy the sigframe out to the user's stack. */
+	if (copyout(&frame, fp, sizeof(*fp)) != 0) {
+		/* Process has trashed its stack. Kill it. */
+		CTR2(KTR_SIG, "sendsig: sigexit td=%p fp=%p", td, fp);
+		PROC_LOCK(p);
+		sigexit(td, SIGILL);
+	}
+
+	/* Translate the signal if appropriate. */
+	if (p->p_sysent->sv_sigtbl && sig <= p->p_sysent->sv_sigsize)
+		sig = p->p_sysent->sv_sigtbl[_SIG_IDX(sig)];
+
+	tf->tf_x[0]= sig;
+	tf->tf_x[1] = (register_t)&fp->sf_si;
+	tf->tf_x[2] = (register_t)&fp->sf_uc;
+
+	tf->tf_elr = (register_t)catcher;
+	tf->tf_sp = (register_t)fp;
+	tf->tf_lr = (register_t)(PS_STRINGS - *(p->p_sysent->sv_szsigcode));
+
+	CTR3(KTR_SIG, "sendsig: return td=%p pc=%#x sp=%#x", td, tf->tf_elr,
+	    tf->tf_sp);
+
+	PROC_LOCK(p);
+	mtx_lock(&psp->ps_mtx);
 }
 
 static void

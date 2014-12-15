@@ -27,6 +27,7 @@
  */
 
 #include "assym.s"
+#include <sys/syscall.h>
 #include <machine/asm.h>
 #include <machine/armreg.h>
 #include <machine/hypervisor.h>
@@ -497,3 +498,28 @@ init_pt_va:
 
 initstack:
 	.space	(PAGE_SIZE * KSTACK_PAGES)
+
+
+ENTRY(sigcode)
+	mov	x0, sp
+	add	x0, x0, #SF_UC
+
+1:
+	mov	x8, #SYS_sigreturn
+	svc	0
+
+	/* sigreturn failed, exit */
+	mov	x8, #SYS_exit
+	svc	0
+
+	b	1b
+END(sigcode)
+	/* This may be copied to the stack, keep it 16-byte aligned */
+	.align	3
+esigcode:
+
+	.data
+	.align	3
+	.global	szsigcode
+szsigcode:
+	.quad	esigcode - sigcode

@@ -47,6 +47,8 @@ ASSYM(PCB_REGS, offsetof(struct pcb, pcb_x));
 ASSYM(PCB_SP, offsetof(struct pcb, pcb_sp));
 ASSYM(PCB_L1ADDR, offsetof(struct pcb, pcb_l1addr));
 
+ASSYM(SF_UC, offsetof(struct sigframe, sf_uc));
+
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 ASSYM(TD_LOCK, offsetof(struct thread, td_lock));
 

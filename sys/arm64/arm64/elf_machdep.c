@@ -51,6 +51,7 @@ __FBSDID("$FreeBSD$");
 #include <vm/vm_param.h>
 
 #include <machine/elf.h>
+#include <machine/md_var.h>
 
 #include "linker_if.h"
 
@@ -65,8 +66,8 @@ static struct sysentvec elf64_freebsd_sysvec = {
 	.sv_transtrap	= NULL,
 	.sv_fixup	= __elfN(freebsd_fixup),
 	.sv_sendsig	= sendsig,
-	.sv_sigcode	= NULL,
-	.sv_szsigcode	= NULL,
+	.sv_sigcode	= sigcode,
+	.sv_szsigcode	= &szsigcode,
 	.sv_prepsyscall	= NULL,
 	.sv_name	= "FreeBSD ELF64",
 	.sv_coredump	= __elfN(coredump),
