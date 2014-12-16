@@ -173,9 +173,8 @@ efifs_read(struct open_file *f, void *buf, size_t size, size_t *resid)
 static int
 efifs_write(struct open_file *f, void *buf, size_t size, size_t *resid)
 {
-	printf("efifs_write\n");
 
-	return (EINVAL);
+	return (EROFS);
 }
 
 static off_t
@@ -311,7 +310,7 @@ static int efisfs_close(struct open_file *);
 static void efisfs_print(int);
 
 struct devsw efisfs_dev = {
-	.dv_name = "simplefs",
+	.dv_name = "sfs", /* dv_name is 8 bytes */
 	.dv_type = DEVT_FS,
 	.dv_init = efisfs_init,
 	.dv_strategy = efisfs_strategy,
@@ -422,6 +421,13 @@ efisfs_close(struct open_file *f)
 static void
 efisfs_print(int verbose)
 {
-	printf("efisfs_print\n");
+	char line[80];
+	EFI_HANDLE h;
+	u_int unit;
+
+	for (unit = 0, h = efi_find_handle(&efisfs_dev, 0);
+	    h != NULL; h = efi_find_handle(&efisfs_dev, ++unit)) {
+		sprintf(line, "    %s%u\n", efisfs_dev.dv_name, unit);
+	}
 }
 
