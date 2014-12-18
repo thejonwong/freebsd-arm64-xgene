@@ -319,7 +319,10 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	uint64_t kernend;
 	uint64_t envp;
 	vm_offset_t addr, size;
+#if defined(LOADER_FDT_SUPPORT)
 	vm_offset_t dtbp;
+	int dtb_size;
+#endif
 	int howto;
 
 	howto = bi_getboothowto(args);
@@ -337,6 +340,17 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	envp = addr;
 	addr = bi_copyenv(addr);
 
+#if defined(LOADER_FDT_SUPPORT)
+	/* Handle device tree blob */
+	addr = roundup(addr, 16);
+	dtbp = addr;
+	dtb_size = fdt_copy(addr);
+
+	/* Pad to a page boundary */
+	if (dtb_size > 0)
+		addr += roundup(dtb_size, PAGE_SIZE);
+#endif
+
 	kfp = file_findfile(NULL, "elf kernel");
 	if (kfp == NULL)
 		kfp = file_findfile(NULL, "elf64 kernel");
@@ -347,13 +361,10 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	file_addmetadata(kfp, MODINFOMD_HOWTO, sizeof howto, &howto);
 	file_addmetadata(kfp, MODINFOMD_ENVP, sizeof envp, &envp);
 
-	dtbfp = file_findfile(NULL, "dtb");
-	if (dtbfp != NULL) {
-		printf("dtbfp = %llx\n", dtbfp->f_addr);
-
-		dtbp = dtbfp->f_addr;
+#if defined(LOADER_FDT_SUPPORT)
+	if (dtb_size > 0)
 		file_addmetadata(kfp, MODINFOMD_DTBP, sizeof dtbp, &dtbp);
-	}
+#endif
 
 	file_addmetadata(kfp, MODINFOMD_KERNEND, sizeof kernend, &kernend);
 
