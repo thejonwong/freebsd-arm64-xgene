@@ -42,6 +42,10 @@ __FBSDID("$FreeBSD$");
 #include <sys/cpuset.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
+
+#include <vm/vm.h>
+#include <vm/pmap.h>
+
 #include <machine/bus.h>
 #include <machine/intr.h>
 
@@ -58,26 +62,45 @@ __FBSDID("$FreeBSD$");
  */
 #define	GIC_V3_DEVSTR	"ARM Generic Interrupt Controller v3.0"
 
+static MALLOC_DEFINE(M_GIC_V3, "GICv3", GIC_V3_DEVSTR);
+/*
+ * Re-Distributor region description.
+ * We will have few of those depending
+ * on the #redistributor-regions property in FDT.
+ */
+struct redist_region {
+	bus_space_tag_t		r_bst;
+	bus_space_handle_t	r_bsh;
+};
+/*
+ * Per-CPU Re-Distributor description.
+ * Includes redundant busdma tag (which is the
+ * same as corresponding redist_region tag).
+ * This will help to simplify access to the tag
+ * when using redist_pcpu structure.
+ */
+struct redist_pcpu {
+	bus_space_tag_t		r_pcpu_bst;
+	bus_space_handle_t	r_pcpu_bsh;
+	vm_paddr_t		r_pcpu_pa;
+};
+
 struct gic_v3_softc {
 	device_t		dev;
-	struct resource	*	gic_res[3];
+	struct resource	**	gic_res;
 	struct mtx		gic_mtx;
 	/* Distributor */
 	bus_space_tag_t		gic_d_bst;
 	bus_space_handle_t	gic_d_bsh;
-	/* Re-Distributor */
-	bus_space_tag_t		gic_r_bst;
-	bus_space_handle_t	gic_r_bsh;
+	/* Re-Distributor regions */
+	struct redist_region *	gic_r_regions;
+	/* Number of Re-Distributor regions */
+	u_int			gic_r_nregions;
+
 	/* Per-CPU Re-Distributor handler */
-	bus_space_handle_t	gic_r_pcpu[MAXCPU];
+	struct redist_pcpu	gic_r_pcpu[MAXCPU];
 
 	u_int			gic_nirqs;
-};
-
-static struct resource_spec arm_gic_v3_spec[] = {
-	{ SYS_RES_MEMORY,	0,	RF_ACTIVE },	/* Distributor */
-	{ SYS_RES_MEMORY,	1,	RF_ACTIVE },	/* Redistributor */
-	{ -1, 0 }
 };
 
 /* Device and PIC methods starting with arm_gic_v3_ */
@@ -157,12 +180,22 @@ static gic_v3_initseq_t gic_v3_secondary_init[] __unused = {
 
 /* GIC Re-Distributor accessors (per-CPU) */
 #define	gic_r_read(sc, len, reg)				\
-		bus_space_read_##len(sc->gic_r_bst,		\
-		    sc->gic_r_pcpu[PCPU_GET(cpuid)], reg)
+({								\
+		u_int cpu = PCPU_GET(cpuid);			\
+								\
+		bus_space_read_##len(				\
+		    sc->gic_r_pcpu[cpu].r_pcpu_bst,		\
+		    sc->gic_r_pcpu[cpu].r_pcpu_bsh, reg);	\
+})
 
 #define	gic_r_write(sc, len, reg, val)				\
-		bus_space_write_##len(sc->gic_r_bst,		\
-		    sc->gic_r_pcpu[PCPU_GET(cpuid)], reg, val)
+({								\
+		u_int cpu = PCPU_GET(cpuid);			\
+								\
+		bus_space_write_##len(				\
+		    sc->gic_r_pcpu[cpu].r_pcpu_bst,		\
+		    sc->gic_r_pcpu[cpu].r_pcpu_bsh, reg, val);	\
+})
 
 /*
  * Device interface.
@@ -186,30 +219,73 @@ arm_gic_v3_attach(device_t dev)
 {
 	struct gic_v3_softc *sc;
 	gic_v3_initseq_t *init_func;
+	pcell_t redist_regions;
+	int rid;
 	int err;
+	size_t i;
 
 	sc = device_get_softc(dev);
 	sc->dev = dev;
 
-	if (bus_alloc_resources(dev, arm_gic_v3_spec, sc->gic_res)) {
-		device_printf(dev, "Could not allocate resources\n");
-		return (ENXIO);
-	}
-
 	/* Initialize mutex */
 	mtx_init(&sc->gic_mtx, "GICv3 lock", NULL, MTX_SPIN);
 
-	/* Distributor interface */
+	/*
+	 * Recover number of the Re-Distributor regions.
+	 */
+	if (OF_getprop(ofw_bus_get_node(dev), "#redistributor-regions",
+	    &redist_regions, sizeof(redist_regions)) <= 0)
+		sc->gic_r_nregions = 1;
+	else
+		sc->gic_r_nregions = fdt32_to_cpu(redist_regions);
+
+	/*
+	 * Allocate array of struct resource.
+	 * One entry for Distributor and all remaining for Re-Distributor.
+	 */
+	sc->gic_res = malloc(
+	    sizeof(sc->gic_res) * (sc->gic_r_nregions + 1),
+	    M_GIC_V3, M_NOWAIT);
+	if (sc->gic_res == NULL) {
+		device_printf(dev, "Cannot allocate memory\n");
+		err = ENOMEM;
+		goto error;
+	}
+	/* Now allocate corresponding resources */
+	for (i = 0, rid = 0; i < (sc->gic_r_nregions + 1); i++, rid++) {
+		sc->gic_res[rid] = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+		    &rid, RF_ACTIVE);
+		if (sc->gic_res[rid] == NULL) {
+			err = ENXIO;
+			goto error;
+		}
+	}
+
+	/*
+	 * Distributor interface
+	 */
 	sc->gic_d_bst = rman_get_bustag(sc->gic_res[0]);
 	sc->gic_d_bsh = rman_get_bushandle(sc->gic_res[0]);
 
 	/*
-	 * TODO: Assuming that there is single Re-Distributor region
-	 *       Use #redistributor-regions property to fix that.
+	 * Re-Dristributor interface
 	 */
-	/* Redistributor interface */
-	sc->gic_r_bst = rman_get_bustag(sc->gic_res[1]);
-	sc->gic_r_bsh = rman_get_bushandle(sc->gic_res[1]);
+	/* Allocate space under region descriptions */
+	sc->gic_r_regions = malloc(
+	    sizeof(*sc->gic_r_regions) * sc->gic_r_nregions,
+	    M_GIC_V3, M_NOWAIT);
+	if (sc->gic_r_regions == NULL) {
+		device_printf(dev, "Cannot allocate memory\n");
+		err = ENOMEM;
+		goto error;
+	}
+	/* Fill-up bus_space information for each region. */
+	for (i = 0, rid = 1; i < sc->gic_r_nregions; i++, rid++) {
+		sc->gic_r_regions[i].r_bst =
+		    rman_get_bustag(sc->gic_res[rid]);
+		sc->gic_r_regions[i].r_bsh =
+		    rman_get_bushandle(sc->gic_res[rid]);
+	}
 
 	/* Get the number of supported interrupts */
 	sc->gic_nirqs = gic_d_read(sc, 4, GICD_TYPER) & 0x1F;
@@ -243,7 +319,9 @@ static int
 arm_gic_v3_detach(device_t dev)
 {
 	struct gic_v3_softc *sc;
-	
+	size_t i;
+	int rid;
+
 	sc = device_get_softc(dev);
 
 	if (device_is_attached(dev)) {
@@ -251,7 +329,11 @@ arm_gic_v3_detach(device_t dev)
 		 * XXX: We should probably deregister PIC
 		 */
 	}
-	bus_release_resources(dev, arm_gic_v3_spec, sc->gic_res);
+	for (i = 0, rid = 0; i < (sc->gic_r_nregions + 1); i++, rid++)
+		bus_release_resource(dev, SYS_RES_MEMORY, rid, sc->gic_res[rid]);
+
+	free(sc->gic_res, M_GIC_V3);
+	free(sc->gic_r_regions, M_GIC_V3);
 
 	return (0);
 }
@@ -322,7 +404,7 @@ arm_gic_v3_unmask_irq(device_t dev, u_int irq)
 	enum gic_v3_xdist xdist;
 
 	sc = device_get_softc(dev);
-	
+
 	mask = (1 << (irq % 32));
 
 	if (irq < 32) { /* SGIs and PPIs in corresponding Re-Distributor */
@@ -356,8 +438,8 @@ gic_v3_wait_for_rwp(struct gic_v3_softc *sc, enum gic_v3_xdist xdist)
 		bsh = sc->gic_d_bsh;
 		break;
 	case (REDIST):
-		bst = sc->gic_r_bst;
-		bsh = sc->gic_r_pcpu[cpuid];
+		bst = sc->gic_r_pcpu[cpuid].r_pcpu_bst;
+		bsh = sc->gic_r_pcpu[cpuid].r_pcpu_bsh;
 		break;
 	default:
 		KASSERT(0, ("%s: Attempt to wait for unknown RWP", __func__));
@@ -390,7 +472,7 @@ gic_v3_cpu_enable_sre(struct gic_v3_softc *sc)
 	u_int cpuid;
 
 	cpuid = PCPU_GET(cpuid);
-	/* 
+	/*
 	 * Set the SRE bit to enable access to GIC CPU interface
 	 * via system registers.
 	 */
@@ -496,48 +578,62 @@ gic_v3_dist_init(struct gic_v3_softc *sc)
 static int
 gic_v3_redist_find(struct gic_v3_softc *sc)
 {
+	bus_space_tag_t r_bst;
 	bus_space_handle_t r_bsh;
 	uint64_t aff;
 	uint64_t typer;
 	uint32_t pidr2;
 	u_int cpuid;
+	size_t i;
 
 	cpuid = PCPU_GET(cpuid);
-
-	pidr2 = bus_space_read_4(sc->gic_r_bst, sc->gic_r_bsh, GICR_PIDR2);
-	switch (pidr2 & GICR_PIDR2_ARCH_MASK) {
-	case GICR_PIDR2_ARCH_GICv3: /* fall through */
-	case GICR_PIDR2_ARCH_GICv4:
-		break;
-	default:
-		device_printf(sc->dev,
-		    "No Re-Distributor found for CPU%u\n", cpuid);
-		return (ENODEV);
-	}
 
 	aff = CPU_AFFINITY(cpuid);
 	/* Affinity in format for comparison with typer */
 	aff = (CPU_AFF3(aff) << 24) | (CPU_AFF2(aff) << 16) |
 	    (CPU_AFF1(aff) << 8) | CPU_AFF0(aff);
 
-	r_bsh = sc->gic_r_bsh;
-	do {
-		typer = bus_space_read_8(sc->gic_r_bst, r_bsh, GICR_TYPER);
-		if ((typer >> 32) == aff) {
-			sc->gic_r_pcpu[cpuid] = r_bsh;
-			if (bootverbose) {
-				device_printf(sc->dev,
-				    "CPU%u Re-Distributor has been found\n",
-				    cpuid);
-			}
-			return (0);
+	if (bootverbose) {
+		device_printf(sc->dev,
+		    "Start searching for Re-Distributor\n");
+	}
+	/* Iterate through Re-Distributor regions */
+	for (i = 0; i < sc->gic_r_nregions; i++) {
+		r_bst = sc->gic_r_regions[i].r_bst;
+		r_bsh = sc->gic_r_regions[i].r_bsh;
+
+		pidr2 = bus_space_read_4(r_bst, r_bsh, GICR_PIDR2);
+		switch (pidr2 & GICR_PIDR2_ARCH_MASK) {
+		case GICR_PIDR2_ARCH_GICv3: /* fall through */
+		case GICR_PIDR2_ARCH_GICv4:
+			break;
+		default:
+			device_printf(sc->dev,
+			    "No Re-Distributor found for CPU%u\n", cpuid);
+			return (ENODEV);
 		}
 
-		r_bsh += PAGE_SIZE_64K * 2;
-		if (typer & GICR_TYPER_VLPIS)
-			r_bsh += PAGE_SIZE_64K * 2;
+		do {
+			typer = bus_space_read_8(r_bst, r_bsh, GICR_TYPER);
+			if ((typer >> 32) == aff) {
+				sc->gic_r_pcpu[cpuid].r_pcpu_bsh = r_bsh;
+				sc->gic_r_pcpu[cpuid].r_pcpu_bst = r_bst;
+				sc->gic_r_pcpu[cpuid].r_pcpu_pa =
+				    vtophys(r_bsh);
+				if (bootverbose) {
+					device_printf(sc->dev,
+					    "CPU%u Re-Distributor has been found\n",
+					    cpuid);
+				}
+				return (0);
+			}
 
-	} while (!(typer & GICR_TYPER_LAST));
+			r_bsh += PAGE_SIZE_64K * 2;
+			if (typer & GICR_TYPER_VLPIS)
+				r_bsh += PAGE_SIZE_64K * 2;
+
+		} while (!(typer & GICR_TYPER_LAST));
+	}
 
 	device_printf(sc->dev, "No Re-Distributor found for CPU%u\n", cpuid);
 	return (ENXIO);
@@ -553,7 +649,7 @@ gic_v3_redist_wake(struct gic_v3_softc *sc)
 	/* Wake up Re-Distributor for this CPU */
 	waker &= ~GICR_WAKER_PS;
 	gic_r_write(sc, 4, GICR_WAKER, waker);
-	/* 
+	/*
 	 * When clearing ProcessorSleep bit it is required to wait for
 	 * ChildrenAsleep to become zero following the processor power-on.
 	 */
@@ -566,8 +662,8 @@ gic_v3_redist_wake(struct gic_v3_softc *sc)
 			return (ENXIO);
 		}
 	}
-	
-	if (bootverbose) {	
+
+	if (bootverbose) {
 		device_printf(sc->dev, "CPU%u Re-Distributor woke up\n",
 		    PCPU_GET(cpuid));
 	}

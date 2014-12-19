@@ -109,7 +109,7 @@
  *		  implemented features.
  *
  * IGRPEN1 - Interrupt Group 1 Enable Register
- * 
+ *
  * IAR1    - Interrupt Acknowledge Register Group 1
  *		* contains number of the highest priority pending
  *		  interrupt from the Group 1.
