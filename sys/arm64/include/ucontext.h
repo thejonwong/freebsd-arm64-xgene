@@ -33,9 +33,11 @@
 #define	_MACHINE_UCONTEXT_H_
 
 struct __mcontext {
-	unsigned long long mc_regs[31];
 	unsigned long long mc_sp;
-	unsigned long long mc_pc;
+	unsigned long long mc_lr;
+	unsigned long long mc_elr;
+	unsigned long long mc_spsr;
+	unsigned long long mc_regs[30];
 } __aligned(64);
 
 typedef struct __mcontext mcontext_t;

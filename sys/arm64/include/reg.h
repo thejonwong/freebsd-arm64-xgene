@@ -38,10 +38,11 @@
 #define	_MACHINE_REG_H_
 
 struct reg {
-	unsigned long long x[31];
 	unsigned long long sp;
-	unsigned long long pc;
-	unsigned long long cpsr;
+	unsigned long long lr;
+	unsigned long long elr;
+	unsigned long long spsr;
+	unsigned long long x[30];
 };
 
 struct fpreg {
