@@ -35,6 +35,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/ktr.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/rman.h>
 #include <sys/pcpu.h>
@@ -49,97 +50,17 @@ __FBSDID("$FreeBSD$");
 #include <machine/bus.h>
 #include <machine/intr.h>
 
-#include <dev/fdt/fdt_common.h>
-#include <dev/ofw/openfirm.h>
-#include <dev/ofw/ofw_bus.h>
-#include <dev/ofw/ofw_bus_subr.h>
-
-#include "gic_v3.h"
 #include "pic_if.h"
+
+#include "gic_v3_reg.h"
+#include "gic_v3_var.h"
 
 /*
  * Driver-specific definitions.
  */
-#define	GIC_V3_DEVSTR	"ARM Generic Interrupt Controller v3.0"
+MALLOC_DEFINE(M_GIC_V3, "GICv3", GIC_V3_DEVSTR);
 
-static MALLOC_DEFINE(M_GIC_V3, "GICv3", GIC_V3_DEVSTR);
-/*
- * Re-Distributor region description.
- * We will have few of those depending
- * on the #redistributor-regions property in FDT.
- */
-struct redist_region {
-	bus_space_tag_t		r_bst;
-	bus_space_handle_t	r_bsh;
-};
-/*
- * Per-CPU Re-Distributor description.
- * Includes redundant busdma tag (which is the
- * same as corresponding redist_region tag).
- * This will help to simplify access to the tag
- * when using redist_pcpu structure.
- */
-struct redist_pcpu {
-	bus_space_tag_t		r_pcpu_bst;
-	bus_space_handle_t	r_pcpu_bsh;
-	vm_paddr_t		r_pcpu_pa;
-};
-
-struct gic_v3_softc {
-	device_t		dev;
-	struct resource	**	gic_res;
-	struct mtx		gic_mtx;
-	/* Distributor */
-	bus_space_tag_t		gic_d_bst;
-	bus_space_handle_t	gic_d_bsh;
-	/* Re-Distributor regions */
-	struct redist_region *	gic_r_regions;
-	/* Number of Re-Distributor regions */
-	u_int			gic_r_nregions;
-
-	/* Per-CPU Re-Distributor handler */
-	struct redist_pcpu	gic_r_pcpu[MAXCPU];
-
-	u_int			gic_nirqs;
-};
-
-/* Device and PIC methods starting with arm_gic_v3_ */
-static int arm_gic_v3_probe(device_t dev);
-static int arm_gic_v3_attach(device_t dev);
-static int arm_gic_v3_detach(device_t dev);
-
-static void arm_gic_v3_dispatch(device_t, struct trapframe *);
-static void arm_gic_v3_eoi(device_t, u_int);
-static void arm_gic_v3_mask_irq(device_t, u_int);
-static void arm_gic_v3_unmask_irq(device_t, u_int);
-
-static device_method_t arm_gic_v3_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		arm_gic_v3_probe),
-	DEVMETHOD(device_attach,	arm_gic_v3_attach),
-	DEVMETHOD(device_detach,	arm_gic_v3_detach),
-
-	/* PIC interface */
-	DEVMETHOD(pic_dispatch,		arm_gic_v3_dispatch),
-	DEVMETHOD(pic_eoi,		arm_gic_v3_eoi),
-	DEVMETHOD(pic_mask,		arm_gic_v3_mask_irq),
-	DEVMETHOD(pic_unmask,		arm_gic_v3_unmask_irq),
-	/* End */
-	DEVMETHOD_END
-};
-
-static driver_t arm_gic_v3_driver = {
-	"gic",
-	arm_gic_v3_methods,
-	sizeof(struct gic_v3_softc),
-};
-
-static devclass_t arm_gic_v3_devclass;
-
-EARLY_DRIVER_MODULE(gic_v3, simplebus, arm_gic_v3_driver, arm_gic_v3_devclass, 0, 0,
-    BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
-EARLY_DRIVER_MODULE(gic_v3, ofwbus, arm_gic_v3_driver, arm_gic_v3_devclass, 0, 0,
-    BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
+devclass_t arm_gic_v3_devclass;
 
 /*
  * Helper functions and definitions.
@@ -200,44 +121,21 @@ static gic_v3_initseq_t gic_v3_secondary_init[] __unused = {
 /*
  * Device interface.
  */
-static int
-arm_gic_v3_probe(device_t dev)
-{
-
-	if (!ofw_bus_status_okay(dev))
-		return (ENXIO);
-
-	if (!ofw_bus_is_compatible(dev, "arm,gic-v3"))
-		return (ENXIO);
-
-	device_set_desc(dev, GIC_V3_DEVSTR);
-	return (BUS_PROBE_DEFAULT);
-}
-
-static int
+int
 arm_gic_v3_attach(device_t dev)
 {
 	struct gic_v3_softc *sc;
 	gic_v3_initseq_t *init_func;
-	pcell_t redist_regions;
 	int rid;
 	int err;
 	size_t i;
 
 	sc = device_get_softc(dev);
 	sc->dev = dev;
+	err = 0;
 
 	/* Initialize mutex */
 	mtx_init(&sc->gic_mtx, "GICv3 lock", NULL, MTX_SPIN);
-
-	/*
-	 * Recover number of the Re-Distributor regions.
-	 */
-	if (OF_getprop(ofw_bus_get_node(dev), "#redistributor-regions",
-	    &redist_regions, sizeof(redist_regions)) <= 0)
-		sc->gic_r_nregions = 1;
-	else
-		sc->gic_r_nregions = fdt32_to_cpu(redist_regions);
 
 	/*
 	 * Allocate array of struct resource.
@@ -305,17 +203,11 @@ arm_gic_v3_attach(device_t dev)
 	 */
 	arm_register_pic(dev, sc->gic_nirqs);
 
-	return (0);
 error:
-	if (bootverbose)
-		device_printf(dev, "Failed to attach. Error %d\n", err);
-	/* Failure so free resources */
-	arm_gic_v3_detach(dev);
-
 	return (err);
 }
 
-static int
+int
 arm_gic_v3_detach(device_t dev)
 {
 	struct gic_v3_softc *sc;
@@ -341,7 +233,7 @@ arm_gic_v3_detach(device_t dev)
 /*
  * PIC interface.
  */
-static void
+void
 arm_gic_v3_dispatch(device_t dev, struct trapframe *frame)
 {
 	uint64_t active_irq;
@@ -366,14 +258,14 @@ arm_gic_v3_dispatch(device_t dev, struct trapframe *frame)
 	}
 }
 
-static void
+void
 arm_gic_v3_eoi(device_t dev, u_int irq)
 {
 
 	gic_icc_write(EOIR1, (uint64_t)irq);
 }
 
-static void
+void
 arm_gic_v3_mask_irq(device_t dev, u_int irq)
 {
 	struct gic_v3_softc *sc;
@@ -396,7 +288,7 @@ arm_gic_v3_mask_irq(device_t dev, u_int irq)
 	gic_v3_wait_for_rwp(sc, xdist);
 }
 
-static void
+void
 arm_gic_v3_unmask_irq(device_t dev, u_int irq)
 {
 	struct gic_v3_softc *sc;

@@ -34,7 +34,7 @@
 #include <machine/param.h>
 #include <machine/pte.h>
 
-#include "gic_v3.h"
+#include "gic_v3_reg.h"
 
 #define	VIRT_BITS	39
 

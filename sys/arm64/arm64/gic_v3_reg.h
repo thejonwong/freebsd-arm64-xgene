@@ -27,8 +27,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _GIC_V3_H_
-#define _GIC_V3_H_
+#ifndef _GIC_V3_REG_H_
+#define _GIC_V3_REG_H_
 
 /* Priority MAX/MIN values */
 #define	GIC_PRIORITY_MAX	0x00UL
@@ -150,4 +150,4 @@ do {								\
 	gic_icc_write(reg, val);				\
 } while (0)
 
-#endif /* _GIC_V3_H_ */
+#endif /* _GIC_V3_REG_H_ */
