@@ -88,6 +88,19 @@ void arm_gic_v3_unmask_irq(device_t, u_int);
 /*
  * ITS
  */
+#define	GIC_V3_ITS_DEVSTR	"ARM GIC Interrupt Translation Service"
 #define	GIC_V3_ITS_COMPSTR	"arm,gic-v3-its"
+
+struct gic_v3_its_softc {
+	device_t		dev;
+	struct resource	*	gic_its_res;
+
+	bus_space_tag_t		gic_its_bst;
+	bus_space_handle_t	gic_its_bsh;
+};
+
+extern devclass_t arm_gic_v3_its_devclass;
+
+int arm_gic_v3_its_attach(device_t);
 
 #endif /* _GIC_V3_VAR_H_ */

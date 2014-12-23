@@ -301,3 +301,45 @@ gic_v3_fdt_bus_attach(device_t dev)
 
 	return (bus_generic_attach(dev));
 }
+
+static int arm_gic_v3_its_fdt_probe(device_t dev);
+static int arm_gic_v3_its_fdt_attach(device_t dev);
+
+static device_method_t arm_gic_v3_its_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		arm_gic_v3_its_fdt_probe),
+	DEVMETHOD(device_attach,	arm_gic_v3_its_fdt_attach),
+
+	/* End */
+	DEVMETHOD_END
+};
+
+static driver_t arm_gic_v3_its_driver = {
+	"gic-its",
+	arm_gic_v3_its_methods,
+	sizeof(struct gic_v3_its_softc),
+};
+
+EARLY_DRIVER_MODULE(gic_v3_its, gic, arm_gic_v3_its_driver, arm_gic_v3_its_devclass, 0, 0,
+    BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
+
+static int
+arm_gic_v3_its_fdt_probe(device_t dev)
+{
+
+	if (!ofw_bus_status_okay(dev))
+		return (ENXIO);
+
+	if (!ofw_bus_is_compatible(dev, GIC_V3_ITS_COMPSTR))
+		return (ENXIO);
+
+	device_set_desc(dev, GIC_V3_ITS_DEVSTR);
+	return (BUS_PROBE_DEFAULT);
+}
+
+static int
+arm_gic_v3_its_fdt_attach(device_t dev)
+{
+
+	return (arm_gic_v3_its_attach(dev));
+}
