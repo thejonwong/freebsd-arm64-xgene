@@ -85,4 +85,9 @@ void arm_gic_v3_eoi(device_t, u_int);
 void arm_gic_v3_mask_irq(device_t, u_int);
 void arm_gic_v3_unmask_irq(device_t, u_int);
 
+/*
+ * ITS
+ */
+#define	GIC_V3_ITS_COMPSTR	"arm,gic-v3-its"
+
 #endif /* _GIC_V3_VAR_H_ */

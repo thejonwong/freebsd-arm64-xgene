@@ -53,9 +53,20 @@ __FBSDID("$FreeBSD$");
 #include "gic_v3_reg.h"
 #include "gic_v3_var.h"
 
-static int arm_gic_v3_fdt_probe(device_t dev);
-static int arm_gic_v3_fdt_attach(device_t dev);
-static int arm_gic_v3_fdt_detach(device_t dev);
+/*
+ * FDT glue.
+ */
+struct gic_v3_ofw_devinfo {
+	struct ofw_bus_devinfo	di_dinfo;
+	struct resource_list	di_rl;
+};
+
+static int arm_gic_v3_fdt_probe(device_t);
+static int arm_gic_v3_fdt_attach(device_t);
+static int arm_gic_v3_fdt_detach(device_t);
+
+static const struct ofw_bus_devinfo *
+arm_gic_v3_ofw_get_devinfo(device_t __unused, device_t);
 
 static device_method_t arm_gic_v3_methods[] = {
 	/* Device interface */
@@ -68,6 +79,15 @@ static device_method_t arm_gic_v3_methods[] = {
 	DEVMETHOD(pic_eoi,		arm_gic_v3_eoi),
 	DEVMETHOD(pic_mask,		arm_gic_v3_mask_irq),
 	DEVMETHOD(pic_unmask,		arm_gic_v3_unmask_irq),
+
+	/* ofw_bus interface */
+	DEVMETHOD(ofw_bus_get_devinfo,	arm_gic_v3_ofw_get_devinfo),
+	DEVMETHOD(ofw_bus_get_compat,	ofw_bus_gen_get_compat),
+	DEVMETHOD(ofw_bus_get_model,	ofw_bus_gen_get_model),
+	DEVMETHOD(ofw_bus_get_name,	ofw_bus_gen_get_name),
+	DEVMETHOD(ofw_bus_get_node,	ofw_bus_gen_get_node),
+	DEVMETHOD(ofw_bus_get_type,	ofw_bus_gen_get_type),
+
 	/* End */
 	DEVMETHOD_END
 };
@@ -82,6 +102,11 @@ EARLY_DRIVER_MODULE(gic_v3, simplebus, arm_gic_v3_driver, arm_gic_v3_devclass, 0
     BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
 EARLY_DRIVER_MODULE(gic_v3, ofwbus, arm_gic_v3_driver, arm_gic_v3_devclass, 0, 0,
     BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
+
+/*
+ * Helper functions declarations.
+ */
+static int gic_v3_fdt_bus_attach(device_t);
 
 /*
  * Device interface.
@@ -120,14 +145,29 @@ arm_gic_v3_fdt_attach(device_t dev)
 		sc->gic_r_nregions = fdt32_to_cpu(redist_regions);
 
 	err = arm_gic_v3_attach(dev);
-	if (err) {
+	if (err)
+		goto error;
+	/*
+	 * Try to register ITS to this GIC.
+	 * GIC will act as a bus in that case.
+	 * Failure here will not affect main GIC functionality.
+	 */
+	if (gic_v3_fdt_bus_attach(dev)) {
 		if (bootverbose) {
 			device_printf(dev,
-			    "Failed to attach. Error %d\n", err);
+			    "Failed to attach ITS to this GIC\n");
 		}
-		/* Failure so free resources */
-		arm_gic_v3_fdt_detach(dev);
 	}
+
+	return (err);
+
+error:
+	if (bootverbose) {
+		device_printf(dev,
+		    "Failed to attach. Error %d\n", err);
+	}
+	/* Failure so free resources */
+	arm_gic_v3_fdt_detach(dev);
 
 	return (err);
 }
@@ -137,4 +177,78 @@ arm_gic_v3_fdt_detach(device_t dev)
 {
 
 	return (arm_gic_v3_detach(dev));
+}
+
+/* ofw_bus interface */
+static const struct ofw_bus_devinfo *
+arm_gic_v3_ofw_get_devinfo(device_t bus __unused, device_t child)
+{
+	struct gic_v3_ofw_devinfo *di;
+
+	di = device_get_ivars(child);
+	return (&di->di_dinfo);
+}
+
+/* Helper functions */
+
+/*
+ * Bus capability support for GICv3.
+ * Collects and configures device informations and finally
+ * adds ITS device as a child of GICv3 in Newbus hierarchy.
+ */
+static int
+gic_v3_fdt_bus_attach(device_t dev)
+{
+	struct gic_v3_ofw_devinfo *di;
+	device_t child;
+	phandle_t parent, node;
+	pcell_t addr_cells, size_cells;
+
+	parent = ofw_bus_get_node(dev);
+	if (parent > 0) {
+		addr_cells = 2;
+		OF_getencprop(parent, "#address-cells", &addr_cells,
+		    sizeof(addr_cells));
+		size_cells = 2;
+		OF_getencprop(parent, "#size-cells", &size_cells,
+		    sizeof(size_cells));
+		/* Iterate through all GIC subordinates */
+		for (node = OF_child(parent); node > 0; node = OF_peer(node)) {
+			/* Allocate and populate devinfo. */
+			di = malloc(sizeof(*di), M_GIC_V3, M_WAITOK | M_ZERO);
+			if (ofw_bus_gen_setup_devinfo(&di->di_dinfo, node)) {
+				if (bootverbose) {
+					device_printf(dev,
+					    "Could not set up devinfo for ITS\n");
+				}
+				free(di, M_GIC_V3);
+				continue;
+			}
+
+			/* Initialize and populate resource list. */
+			resource_list_init(&di->di_rl);
+			ofw_bus_reg_to_rl(dev, node, addr_cells, size_cells,
+			    &di->di_rl);
+
+			/* Should not have any interrupts, so don't add any */
+
+			/* Add newbus device for this FDT node */
+			child = device_add_child(dev, NULL, -1);
+			if (!child) {
+				if (bootverbose) {
+					device_printf(dev,
+					    "Could not add child: %s\n",
+					    di->di_dinfo.obd_name);
+				}
+				resource_list_free(&di->di_rl);
+				ofw_bus_gen_destroy_devinfo(&di->di_dinfo);
+				free(di, M_GIC_V3);
+				continue;
+			}
+
+			device_set_ivars(child, di);
+		}
+	}
+
+	return (bus_generic_attach(dev));
 }
