@@ -65,6 +65,9 @@ static int arm_gic_v3_fdt_probe(device_t);
 static int arm_gic_v3_fdt_attach(device_t);
 static int arm_gic_v3_fdt_detach(device_t);
 
+static struct resource * arm_gic_v3_bus_alloc_res(device_t,
+    device_t, int, int *, u_long, u_long, u_long, u_int);
+
 static const struct ofw_bus_devinfo *
 arm_gic_v3_ofw_get_devinfo(device_t __unused, device_t);
 
@@ -79,6 +82,10 @@ static device_method_t arm_gic_v3_methods[] = {
 	DEVMETHOD(pic_eoi,		arm_gic_v3_eoi),
 	DEVMETHOD(pic_mask,		arm_gic_v3_mask_irq),
 	DEVMETHOD(pic_unmask,		arm_gic_v3_unmask_irq),
+
+	/* Bus interface */
+	DEVMETHOD(bus_alloc_resource,		arm_gic_v3_bus_alloc_res),
+	DEVMETHOD(bus_activate_resource,	bus_generic_activate_resource),
 
 	/* ofw_bus interface */
 	DEVMETHOD(ofw_bus_get_devinfo,	arm_gic_v3_ofw_get_devinfo),
@@ -187,6 +194,48 @@ arm_gic_v3_ofw_get_devinfo(device_t bus __unused, device_t child)
 
 	di = device_get_ivars(child);
 	return (&di->di_dinfo);
+}
+
+/* Bus interface */
+static struct resource *
+arm_gic_v3_bus_alloc_res(device_t bus, device_t child, int type, int *rid,
+    u_long start, u_long end, u_long count, u_int flags)
+{
+	struct gic_v3_ofw_devinfo *di;
+	struct resource_list_entry *rle;
+	int ranges_len;
+
+	if ((start == 0UL) && (end == ~0UL)) {
+		if ((di = device_get_ivars(child)) == NULL)
+			return (NULL);
+		if (type != SYS_RES_MEMORY)
+			return (NULL);
+
+		/* Find defaults for this rid */
+		rle = resource_list_find(&di->di_rl, type, *rid);
+		if (rle == NULL)
+			return (NULL);
+
+		start = rle->start;
+		end = rle->end;
+		count = rle->count;
+	}
+	/*
+	 * XXX: No ranges remap!
+	 *	Absolute address is expected.
+	 */
+	if (ofw_bus_has_prop(bus, "ranges")) {
+		ranges_len = OF_getproplen(ofw_bus_get_node(bus), "ranges");
+		if (ranges_len != 0) {
+			if (bootverbose) {
+				device_printf(child,
+				    "Ranges remap not supported\n");
+			}
+			return (NULL);
+		}
+	}
+	return (bus_generic_alloc_resource(bus, child, type, rid, start, end,
+	    count, flags));
 }
 
 /* Helper functions */
