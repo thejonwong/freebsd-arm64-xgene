@@ -38,13 +38,8 @@ __FBSDID("$FreeBSD$");
 #endif
 
 int
-amd64_autoload(void)
+arm64_autoload(void)
 {
-#if defined(LOADER_FDT_SUPPORT)
-	int err;
 
-	if ((err = fdt_setup_fdtp()) != 0)
-		return (err);
-#endif
 	return (0);
 }

@@ -128,7 +128,7 @@ main(int argc, CHAR16 *argv[])
 	env_setenv("loaddev", EV_VOLATILE, arm64_fmtdev(&currdev), env_noset,
 	    env_nounset);
 
-	archsw.arch_autoload = amd64_autoload;
+	archsw.arch_autoload = arm64_autoload;
 	archsw.arch_getdev = arm64_getdev;
 	archsw.arch_copyin = arm64_efi_copyin;
 	archsw.arch_copyout = arm64_efi_copyout;

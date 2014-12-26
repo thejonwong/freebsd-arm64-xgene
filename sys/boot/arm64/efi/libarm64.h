@@ -29,7 +29,7 @@
 #ifndef _LIBARM64_H_
 #define	_LIBARM64_H_
 
-int amd64_autoload(void);
+int arm64_autoload(void);
 int arm64_getdev(void **vdev, const char *devspec, const char **path);
 char *arm64_fmtdev(void *vdev);
 int arm64_setcurrdev(struct env_var *ev, int flags, const void *value);
