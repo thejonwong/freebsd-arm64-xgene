@@ -429,12 +429,7 @@ start_mmu:
 	dsb	sy
 
 	/* Load the exception vectors */
-	/*
-	 * TODO: We should use ldr x2, =exception_vectors here
-	 * when clang supports it.
-	 */
-	adr	x2, _exception_vectors
-	ldr	x2, [x2]
+	ldr	x2, =exception_vectors
 	msr	vbar_el1, x2
 
 	/* Load ttbr0 and ttbr1 */
@@ -469,8 +464,6 @@ start_mmu:
 	ret
 
 	.align 3
-_exception_vectors:
-	.quad	exception_vectors
 mair:
 		/* Device       Normal, no cache   Normal, write-back */
 	.quad	MAIR(0x00, 0) | MAIR(0x44, 1)    | MAIR(0xff, 2)
