@@ -139,7 +139,6 @@ main(int argc, CHAR16 *argv[])
 	return (EFI_SUCCESS);		/* keep compiler happy */
 }
 
-#if 0
 COMMAND_SET(reboot, "reboot", "reboot the system", command_reboot);
 
 static int
@@ -157,7 +156,6 @@ command_reboot(int argc, char *argv[])
 	/* NOTREACHED */
 	return (CMD_ERROR);
 }
-#endif
 
 COMMAND_SET(quit, "quit", "exit the loader", command_quit);
 
