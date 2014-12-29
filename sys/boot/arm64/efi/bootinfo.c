@@ -319,6 +319,7 @@ int
 bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 {
 	struct preloaded_file *xp, *kfp, *dtbfp;
+	struct devdesc *rootdev;
 	struct file_metadata *md;
 	uint64_t kernend;
 	uint64_t envp;
@@ -327,9 +328,25 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	vm_offset_t dtbp;
 	int dtb_size;
 #endif
+	char *rootdevname;
 	int howto;
 
 	howto = bi_getboothowto(args);
+
+	/*
+	 * Allow the environment variable 'rootdev' to override the supplied
+	 * device. This should perhaps go to MI code and/or have $rootdev
+	 * tested/set by MI code before launching the kernel.
+	 */
+	rootdevname = getenv("rootdev");
+	rootdev = NULL;
+	arm64_getdev((void **)(&rootdev), rootdevname, NULL);
+	if (rootdev == NULL) {
+		printf("Can't determine root device.\n");
+		return(EINVAL);
+	}
+
+	getrootmount(arm64_fmtdev((void *)rootdev));
 
 	/* find the last module in the chain */
 	addr = 0;
