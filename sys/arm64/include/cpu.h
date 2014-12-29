@@ -44,7 +44,7 @@
 #include <machine/frame.h>
 
 #define	TRAPF_PC(tfp)		((tfp)->tf_lr)
-#define	TRAPF_USERMODE(tfp)	(0) /* TODO: Fix */
+#define	TRAPF_USERMODE(tfp)	(((tfp)->tf_elr & (1ul << 63)) == 0)
 
 #define	cpu_getstack(td)	((td)->td_frame->tf_sp)
 #define	cpu_setstack(td, sp)	((td)->td_frame->tf_sp = (sp))

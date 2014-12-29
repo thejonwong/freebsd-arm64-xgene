@@ -38,6 +38,8 @@ __FBSDID("$FreeBSD$");
 #include <machine/vmparam.h>
 
 ASSYM(KERNBASE, KERNBASE);
+ASSYM(TDF_ASTPENDING, TDF_ASTPENDING);
+ASSYM(TDF_NEEDRESCHED, TDF_NEEDRESCHED);
 
 ASSYM(PCPU_SIZE, sizeof(struct pcpu));
 ASSYM(PC_CURPCB, offsetof(struct pcpu, pc_curpcb));
@@ -50,6 +52,7 @@ ASSYM(PCB_L1ADDR, offsetof(struct pcb, pcb_l1addr));
 ASSYM(SF_UC, offsetof(struct sigframe, sf_uc));
 
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
+ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TD_LOCK, offsetof(struct thread, td_lock));
 
 ASSYM(TF_X, offsetof(struct trapframe, tf_x));

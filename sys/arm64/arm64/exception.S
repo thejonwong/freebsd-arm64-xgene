@@ -25,6 +25,11 @@
  *
  */
 
+#include <machine/asm.h>
+__FBSDID("$FreeBSD$");
+
+#include "assym.s"
+
 	.text
 
 .macro	save_registers el
@@ -81,6 +86,38 @@
 	ldp	x28, x29, [sp], #16
 .endm
 
+.macro	do_ast
+	/* Disable interrupts */
+	mrs	x19, daif
+	msr	daifset, #2
+
+	/* Read the current thread flags */
+1:	mrs	x1, tpidr_el1
+	ldr	x2, [x1, #TD_FLAGS]! /* TODO: No need for the ! but clang fails without it */
+
+	/* Check if we have either bits set */
+	mov	x3, #((TDF_ASTPENDING|TDF_NEEDRESCHED) >> 8)
+	lsl	x3, x3, #8
+	and	x2, x2, x3
+	cmp	x2, #0
+	b.eq	2f
+
+	/* Restore interrupts */
+	msr	daif, x19
+
+	/* handle the ast */
+	mov	x0, sp
+	bl	_C_LABEL(ast)
+
+	/* Disable interrupts */
+	mrs	x19, daif
+	msr	daifset, #2
+
+2:
+	/* Restore interrupts */
+	msr	daif, x19
+.endm
+
 handle_el1h_sync:
 	save_registers 1
 	mov	x0, sp
@@ -102,6 +139,7 @@ handle_el0_sync:
 	save_registers 0
 	mov	x0, sp
 	bl	do_el0_sync
+	do_ast
 	restore_registers 0
 	eret
 
