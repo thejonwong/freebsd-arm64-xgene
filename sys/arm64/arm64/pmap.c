@@ -4423,91 +4423,52 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_object_t object,
 void
 pmap_unwire(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	panic("pmap_unwire");
-#if 0
 	vm_offset_t va_next;
-	pml4_entry_t *pml4e;
-	pdp_entry_t *pdpe;
-	pd_entry_t *pde;
-	pt_entry_t *pte, PG_V;
+	pd_entry_t *l1, *l2;
+	pt_entry_t *l3;
 	boolean_t pv_lists_locked;
 
-	PG_V = pmap_valid_bit(pmap);
 	pv_lists_locked = FALSE;
-resume:
 	PMAP_LOCK(pmap);
 	for (; sva < eva; sva = va_next) {
-		pml4e = pmap_pml4e(pmap, sva);
-		if ((*pml4e & PG_V) == 0) {
-			va_next = (sva + NBPML4) & ~PML4MASK;
+		l1 = pmap_l1(pmap, sva);
+		if (*l1 == 0) {
+			va_next = (sva + L1_SIZE) & ~L1_OFFSET;
 			if (va_next < sva)
 				va_next = eva;
 			continue;
 		}
-		pdpe = pmap_pml4e_to_pdpe(pml4e, sva);
-		if ((*pdpe & PG_V) == 0) {
-			va_next = (sva + NBPDP) & ~PDPMASK;
-			if (va_next < sva)
-				va_next = eva;
-			continue;
-		}
-		va_next = (sva + NBPDR) & ~PDRMASK;
+
+		va_next = (sva + L2_SIZE) & ~L2_OFFSET;
 		if (va_next < sva)
 			va_next = eva;
-		pde = pmap_pdpe_to_pde(pdpe, sva);
-		if ((*pde & PG_V) == 0)
-			continue;
-		if ((*pde & PG_PS) != 0) {
-			if ((*pde & PG_W) == 0)
-				panic("pmap_unwire: pde %#jx is missing PG_W",
-				    (uintmax_t)*pde);
 
-			/*
-			 * Are we unwiring the entire large page?  If not,
-			 * demote the mapping and fall through.
-			 */
-			if (sva + NBPDR == va_next && eva >= va_next) {
-				atomic_clear_long(pde, PG_W);
-				pmap->pm_stats.wired_count -= NBPDR /
-				    PAGE_SIZE;
-				continue;
-			} else {
-				if (!pv_lists_locked) {
-					pv_lists_locked = TRUE;
-					if (!rw_try_rlock(&pvh_global_lock)) {
-						PMAP_UNLOCK(pmap);
-						rw_rlock(&pvh_global_lock);
-						/* Repeat sva. */
-						goto resume;
-					}
-				}
-				if (!pmap_demote_pde(pmap, pde, sva))
-					panic("pmap_unwire: demotion failed");
-			}
-		}
+		l2 = pmap_l1_to_l2(l1, sva);
+		if (*l2 == 0)
+			continue;
+
 		if (va_next > eva)
 			va_next = eva;
-		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
-		    sva += PAGE_SIZE) {
-			if ((*pte & PG_V) == 0)
+		for (l3 = pmap_l2_to_l3(l2, sva); sva != va_next; l3++,
+		    sva += L3_SIZE) {
+			if (*l3 == 0)
 				continue;
-			if ((*pte & PG_W) == 0)
-				panic("pmap_unwire: pte %#jx is missing PG_W",
-				    (uintmax_t)*pte);
+			if ((*l3 & ATTR_SW_WIRED) == 0)
+				panic("pmap_unwire: l3 %#jx is missing "
+				    "ATTR_SW_WIRED", (uintmax_t)*l3);
 
 			/*
 			 * PG_W must be cleared atomically.  Although the pmap
 			 * lock synchronizes access to PG_W, another processor
 			 * could be setting PG_M and/or PG_A concurrently.
 			 */
-			atomic_clear_long(pte, PG_W);
+			atomic_clear_long(l3, ATTR_SW_WIRED);
 			pmap->pm_stats.wired_count--;
 		}
 	}
 	if (pv_lists_locked)
 		rw_runlock(&pvh_global_lock);
 	PMAP_UNLOCK(pmap);
-#endif /* 0 */
 }
 
 /*
@@ -5322,16 +5283,11 @@ pmap_is_referenced(vm_page_t m)
 void
 pmap_remove_write(vm_page_t m)
 {
-	panic("pmap_remove_write");
-#if 0
-	struct md_page *pvh;
 	pmap_t pmap;
 	struct rwlock *lock;
-	pv_entry_t next_pv, pv;
-	pd_entry_t *pde;
-	pt_entry_t oldpte, *pte, PG_M, PG_RW;
-	vm_offset_t va;
-	int pvh_gen, md_gen;
+	pv_entry_t pv;
+	pt_entry_t *l3, oldl3;
+	int md_gen;
 
 	KASSERT((m->oflags & VPO_UNMANAGED) == 0,
 	    ("pmap_remove_write: page %p is not managed", m));
@@ -5346,64 +5302,29 @@ pmap_remove_write(vm_page_t m)
 		return;
 	rw_rlock(&pvh_global_lock);
 	lock = VM_PAGE_TO_PV_LIST_LOCK(m);
-	pvh = pa_to_pvh(VM_PAGE_TO_PHYS(m));
 retry_pv_loop:
 	rw_wlock(lock);
-	if ((m->flags & PG_FICTITIOUS) != 0)
-		goto small_mappings;
-	TAILQ_FOREACH_SAFE(pv, &pvh->pv_list, pv_next, next_pv) {
-		pmap = PV_PMAP(pv);
-		if (!PMAP_TRYLOCK(pmap)) {
-			pvh_gen = pvh->pv_gen;
-			rw_wunlock(lock);
-			PMAP_LOCK(pmap);
-			rw_wlock(lock);
-			if (pvh_gen != pvh->pv_gen) {
-				PMAP_UNLOCK(pmap);
-				rw_wunlock(lock);
-				goto retry_pv_loop;
-			}
-		}
-		PG_RW = pmap_rw_bit(pmap);
-		va = pv->pv_va;
-		pde = pmap_pde(pmap, va);
-		if ((*pde & PG_RW) != 0)
-			(void)pmap_demote_pde_locked(pmap, pde, va, &lock);
-		KASSERT(lock == VM_PAGE_TO_PV_LIST_LOCK(m),
-		    ("inconsistent pv lock %p %p for page %p",
-		    lock, VM_PAGE_TO_PV_LIST_LOCK(m), m));
-		PMAP_UNLOCK(pmap);
-	}
-small_mappings:
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_next) {
 		pmap = PV_PMAP(pv);
 		if (!PMAP_TRYLOCK(pmap)) {
-			pvh_gen = pvh->pv_gen;
 			md_gen = m->md.pv_gen;
 			rw_wunlock(lock);
 			PMAP_LOCK(pmap);
 			rw_wlock(lock);
-			if (pvh_gen != pvh->pv_gen ||
-			    md_gen != m->md.pv_gen) {
+			if (md_gen != m->md.pv_gen) {
 				PMAP_UNLOCK(pmap);
 				rw_wunlock(lock);
 				goto retry_pv_loop;
 			}
 		}
-		PG_M = pmap_modified_bit(pmap);
-		PG_RW = pmap_rw_bit(pmap);
-		pde = pmap_pde(pmap, pv->pv_va);
-		KASSERT((*pde & PG_PS) == 0,
-		    ("pmap_remove_write: found a 2mpage in page %p's pv list",
-		    m));
-		pte = pmap_pde_to_pte(pde, pv->pv_va);
+		l3 = pmap_l3(pmap, pv->pv_va);
 retry:
-		oldpte = *pte;
-		if (oldpte & PG_RW) {
-			if (!atomic_cmpset_long(pte, oldpte, oldpte &
-			    ~(PG_RW | PG_M)))
+		oldl3 = *l3;
+		if ((oldl3 & ATTR_AP_RW_BIT) == ATTR_AP(ATTR_AP_RW)) {
+			if (!atomic_cmpset_long(l3, oldl3,
+			    oldl3 | ATTR_AP(ATTR_AP_RO)))
 				goto retry;
-			if ((oldpte & PG_M) != 0)
+			if ((oldl3 & ATTR_AF) != 0)
 				vm_page_dirty(m);
 			pmap_invalidate_page(pmap, pv->pv_va);
 		}
@@ -5412,7 +5333,6 @@ retry:
 	rw_wunlock(lock);
 	vm_page_aflag_clear(m, PGA_WRITEABLE);
 	rw_runlock(&pvh_global_lock);
-#endif
 }
 
 static __inline boolean_t
