@@ -70,6 +70,7 @@ options 	INCLUDE_CONFIG_FILE     # Include this file in kernel
 device		virtio
 device		virtio_mmio
 device		virtio_blk
+device		vtnet
 
 # Debugging support.  Always need this:
 #options 	KDB			# Enable kernel debugger support.
