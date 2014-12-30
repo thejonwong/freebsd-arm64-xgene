@@ -181,10 +181,21 @@ do_el1h_sync(struct trapframe *frame)
 
 	/* Read the esr register to get the exception details */
 	__asm __volatile("mrs %x0, esr_el1" : "=&r"(esr));
-	KASSERT((esr & (1 << 25)) != 0,
-	    ("Invalid instruction length in exception"));
-
 	exception = (esr >> 26) & 0x3f;
+
+	/*
+	 * Sanity check we are in an exception er can handle. The IL bit
+	 * is used to indicate the instruction length, except in a few
+	 * exceptions described in the ARMv8 ARM.
+	 *
+	 * It is unclear in some cases if the bit is implementation defined.
+	 * The Foundation Model and QEMU disagree on if the IL bit should
+	 * be set when we are in a data fault from the same EL and the ISV
+	 * bit (bit 24) is also set.
+	 */
+	KASSERT((esr & (1 << 25)) != 0 ||
+	    (exception == 0x25 && ((esr & (1 << 24)) == 1)),
+	    ("Invalid instruction length in exception"));
 
 	if (0) {
 		printf("In do_el1h_sync\n");
