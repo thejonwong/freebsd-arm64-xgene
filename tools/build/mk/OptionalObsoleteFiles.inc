@@ -1331,26 +1331,6 @@ OLD_FILES+=usr/share/man/man1/gdbserver.1.gz
 OLD_FILES+=usr/share/man/man1/kgdb.1.gz
 .endif
 
-.if ${MK_GPIB} == no
-OLD_FILES+=usr/include/dev/ieee488/ibfoo_int.h
-OLD_FILES+=usr/include/dev/ieee488/tnt4882.h
-OLD_FILES+=usr/include/dev/ieee488/ugpib.h
-OLD_FILES+=usr/include/dev/ieee488/upd7210.h
-OLD_DIRS+=usr/include/dev/ieee488
-OLD_FILES+=usr/include/gpib/gpib.h
-OLD_DIRS+=usr/include/gpib
-OLD_FILES+=usr/lib/libgpib.a
-OLD_FILES+=usr/lib/libgpib.so
-OLD_LIBS+=usr/lib/libgpib.so.3
-OLD_FILES+=usr/lib/libgpib_p.a
-.if ${TARGET_ARCH} == "amd64" || ${TARGET_ARCH} == "powerpc64"
-OLD_FILES+=usr/lib32/libgpib.a
-OLD_FILES+=usr/lib32/libgpib.so
-OLD_LIBS+=usr/lib32/libgpib.so.3
-OLD_FILES+=usr/lib32/libgpib_p.a
-.endif
-.endif
-
 .if ${MK_GPIO} == no
 OLD_FILES+=usr/sbin/gpioctl
 OLD_FILES+=usr/share/man/man8/gpioctl.8.gz
@@ -3703,7 +3683,6 @@ OLD_FILES+=usr/lib/libformw_p.a
 OLD_FILES+=usr/lib/libgcc_p.a
 OLD_FILES+=usr/lib/libgeom_p.a
 OLD_FILES+=usr/lib/libgnuregex_p.a
-OLD_FILES+=usr/lib/libgpib_p.a
 OLD_FILES+=usr/lib/libgssapi_krb5_p.a
 OLD_FILES+=usr/lib/libgssapi_p.a
 OLD_FILES+=usr/lib/libhdb_p.a
@@ -4663,10 +4642,10 @@ OLD_FILES+=usr/share/man/man4/atf-test-case.4.gz
 OLD_FILES+=usr/share/mk/atf.test.mk
 
 # Test suite.
-. if(exists(${DESTDIR}/usr/tests/))
-TESTS_DIRS!=find ${DESTDIR}/usr/tests -type d | sed -e 's,^${DESTDIR}/,,'; echo
+. if exists(${DESTDIR}${TESTSBASE})
+TESTS_DIRS!=find ${DESTDIR}${TESTSBASE} -type d | sed -e 's,^${DESTDIR}/,,'; echo
 OLD_DIRS+=${TESTS_DIRS}
-TESTS_FILES!=find ${DESTDIR}/usr/tests \! -type d | sed -e 's,^${DESTDIR}/,,'; echo
+TESTS_FILES!=find ${DESTDIR}${TESTSBASE} \! -type d | sed -e 's,^${DESTDIR}/,,'; echo
 OLD_FILES+=${TESTS_FILES}
 . endif
 .endif	# Test suite.

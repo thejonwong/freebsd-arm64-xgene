@@ -648,7 +648,7 @@ typedef struct {
 #define	R_AARCH64_PREL32	261	/* PC relative, 32-bit overflow check */
 #define	R_AARCH64_PREL16	262	/* PC relative, 16-bit overflow check */
 #define	R_AARCH64_COPY		1024	/* Copy data from shared object */
-#define	R_AARCH64_GLOB_DATA	1025	/* Set GOT entry to data address */
+#define	R_AARCH64_GLOB_DAT	1025	/* Set GOT entry to data address */
 #define	R_AARCH64_JUMP_SLOT	1026	/* Set GOT entry to code address */
 #define	R_AARCH64_RELATIVE 	1027	/* Add load address of shared object */
 #define	R_AARCH64_TLSDESC 	1031	/* Identify the TLS descriptor */

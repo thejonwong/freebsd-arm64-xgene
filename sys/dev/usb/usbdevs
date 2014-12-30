@@ -2411,6 +2411,8 @@ product INTEL EASYPC_CAMERA	0x0110	Easy PC Camera
 product INTEL TESTBOARD		0x9890	82930 test board
 product INTEL2 IRMH        	0x0020	Integrated Rate Matching Hub
 product INTEL2 IRMH2        	0x0024	Integrated Rate Matching Hub
+product INTEL2 IRMH3        	0x8000	Integrated Rate Matching Hub
+product INTEL2 IRMH4        	0x8008	Integrated Rate Matching Hub
 
 /* Interbiometric products */
 product INTERBIOMETRICS IOBOARD		0x1002	FTDI compatible adapter
@@ -3195,7 +3197,7 @@ product NETGEAR EA101X		0x1002	Ethernet
 product NETGEAR FA101		0x1020	Ethernet 10/100, USB1.1
 product NETGEAR FA120		0x1040	USB 2.0 Ethernet
 product NETGEAR M4100		0x1100	M4100/M5300/M7100 series switch
-product NETGEAR WG111V2_2	0x4240	PrismGT USB 2.0 WLAN
+product NETGEAR WG111V1_2	0x4240	PrismGT USB 2.0 WLAN
 product NETGEAR WG111V3		0x4260	WG111v3
 product NETGEAR WG111U		0x4300	WG111U
 product NETGEAR WG111U_NF	0x4301	WG111U (no firmware)
@@ -4492,6 +4494,7 @@ product WESTERN EXTHDD		0x0400	External HDD
 product WESTERN HUB		0x0500	USB HUB
 product WESTERN MYBOOK		0x0901	MyBook External HDD
 product WESTERN MYPASSPORT_00	0x0704	MyPassport External HDD
+product WESTERN MYPASSPORT_11	0x0741	MyPassport External HDD
 product WESTERN MYPASSPORT_01	0x0746	MyPassport External HDD
 product WESTERN MYPASSPORT_02	0x0748	MyPassport External HDD
 product WESTERN MYPASSPORT_03	0x074A	MyPassport External HDD
