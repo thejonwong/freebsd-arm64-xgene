@@ -5794,7 +5794,6 @@ resume:
 void
 pmap_clear_modify(vm_page_t m)
 {
-	panic("pmap_clear_modify");
 #if 0
 	struct md_page *pvh;
 	pmap_t pmap;
@@ -5804,6 +5803,7 @@ pmap_clear_modify(vm_page_t m)
 	struct rwlock *lock;
 	vm_offset_t va;
 	int md_gen, pvh_gen;
+#endif
 
 	KASSERT((m->oflags & VPO_UNMANAGED) == 0,
 	    ("pmap_clear_modify: page %p is not managed", m));
@@ -5818,6 +5818,8 @@ pmap_clear_modify(vm_page_t m)
 	 */
 	if ((m->aflags & PGA_WRITEABLE) == 0)
 		return;
+	panic("pmap_clear_modify");
+#if 0
 	pvh = pa_to_pvh(VM_PAGE_TO_PHYS(m));
 	rw_rlock(&pvh_global_lock);
 	lock = VM_PAGE_TO_PV_LIST_LOCK(m);
