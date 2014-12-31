@@ -52,6 +52,17 @@ void do_el1h_sync(struct trapframe *);
 void do_el0_sync(struct trapframe *);
 void do_el0_error(struct trapframe *);
 
+static __inline void
+call_trapsignal(struct thread *td, int sig, u_long code)
+{
+	ksiginfo_t ksi;
+
+	ksiginfo_init_trap(&ksi);
+	ksi.ksi_signo = sig;
+	ksi.ksi_code = (int)code;
+	trapsignal(td, &ksi);
+}
+
 int
 cpu_fetch_syscall_args(struct thread *td, struct syscall_args *sa)
 {
@@ -112,7 +123,7 @@ data_abort(struct trapframe *frame, uint64_t esr, int lower)
 	vm_prot_t ftype;
 	vm_offset_t va;
 	uint64_t far;
-	int error;
+	int error, sig;
 
 	__asm __volatile("mrs %x0, far_el1" : "=r"(far));
 
@@ -155,8 +166,19 @@ data_abort(struct trapframe *frame, uint64_t esr, int lower)
 		error = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
 	}
 
-	if (error != 0)
-		panic("vm_fault failed");
+	if (error != 0) {
+		if (lower) {
+			if (error == ENOMEM)
+				sig = SIGKILL;
+			else
+				sig = SIGSEGV;
+			call_trapsignal(td, sig, 0);
+		} else
+			panic("vm_fault failed: %llx", frame->tf_elr);
+	}
+
+	if (lower)
+		userret(td, frame);
 }
 
 static void
