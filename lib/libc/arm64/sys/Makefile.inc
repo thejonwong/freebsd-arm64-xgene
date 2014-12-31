@@ -2,8 +2,9 @@
 
 SRCS+=	__vdso_gettc.c
 
-#MDASM= brk.S pipe.S ptrace.S sbrk.S
+#MDASM= brk.S ptrace.S sbrk.S
 MDASM=	cerror.S \
+	pipe.S \
 	shmat.S \
 	sigreturn.S \
 	syscall.S \
