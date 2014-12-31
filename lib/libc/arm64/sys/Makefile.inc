@@ -2,8 +2,11 @@
 
 SRCS+=	__vdso_gettc.c
 
-#MDASM= brk.S pipe.S ptrace.S sbrk.S shmat.S sigreturn.S syscall.S
+#MDASM= brk.S pipe.S ptrace.S sbrk.S
 MDASM=	cerror.S \
+	shmat.S \
+	sigreturn.S \
+	syscall.S \
 	vfork.S
 
 # Don't generate default code for these syscalls:
