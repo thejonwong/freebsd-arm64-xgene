@@ -324,7 +324,7 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld, int flags,
 
 		switch (ELF_R_TYPE(rela->r_info)) {
 		case R_AARCH64_ABS64:
-		case R_AARCH64_GLOB_DATA:
+		case R_AARCH64_GLOB_DAT:
 			def = find_symdef(symnum, obj, &defobj, flags, cache,
 			    lockstate);
 			if (def == NULL)
