@@ -48,7 +48,7 @@ END(__sys_##name)
 ENTRY(__sys_##name);						\
 	WEAK_REFERENCE(__sys_##name, _##name);			\
 	_SYSCALL(name);						\
-	b.cs PIC_SYM(cerror, PLT);				\
+	b.cs	cerror;						\
 	ret;							\
 END(__sys_##name)
 
@@ -57,7 +57,7 @@ ENTRY(__sys_##name);						\
 	WEAK_REFERENCE(__sys_##name, name);			\
 	WEAK_REFERENCE(__sys_##name, _##name);			\
 	_SYSCALL(name);						\
-	b.cs PIC_SYM(cerror, PLT);				\
+	b.cs	cerror;						\
 	ret;							\
 END(__sys_##name)
 

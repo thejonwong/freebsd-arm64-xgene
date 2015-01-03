@@ -40,7 +40,7 @@ ENTRY(__sys_pipe)
 
 	/* Make the syscall */
 	_SYSCALL(pipe)
-	b.cs PIC_SYM(cerror, PLT)
+	b.cs	cerror
 
 	/* Store the result */
 	str	w0, [x2, #0]

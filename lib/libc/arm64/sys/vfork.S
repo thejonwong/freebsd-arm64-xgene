@@ -34,7 +34,7 @@ ENTRY(__sys_vfork)
 	WEAK_REFERENCE(__sys_vfork, _vfork)
 	mov	x2, lr
 	_SYSCALL(vfork)
-	b.cs PIC_SYM(cerror, PLT)
+	b.cs	cerror
 	sub	x1, x1, #1
 	and	x0, x0, x1
 	mov	lr, x2
