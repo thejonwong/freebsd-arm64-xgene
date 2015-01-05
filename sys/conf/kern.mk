@@ -77,7 +77,16 @@ CFLAGS+=	-mno-mmx -mno-sse -msoft-float
 INLINE_LIMIT?=	8000
 .endif
 
-.if ${MACHINE_CPUARCH} == "arm" || ${MACHINE_CPUARCH} == "arm64"
+.if ${MACHINE_CPUARCH} == "arm"
+INLINE_LIMIT?=	8000
+.endif
+
+#
+# Without -mcmodel=large clang 3.5 generates relocations agains the
+# global offset table in the kernel that we shouldn't need to handle.
+#
+.if ${MACHINE_CPUARCH} == "arm64"
+CFLAGS.clang+=	-mcmodel=large
 INLINE_LIMIT?=	8000
 .endif
 
