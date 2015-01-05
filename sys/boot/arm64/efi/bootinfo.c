@@ -38,6 +38,10 @@ __FBSDID("$FreeBSD$");
 #include <efi.h>
 #include <efilib.h>
 
+#if defined(LOADER_FDT_SUPPORT)
+#include <fdt_platform.h>
+#endif
+
 #include "bootstrap.h"
 #include "libarm64.h"
 
