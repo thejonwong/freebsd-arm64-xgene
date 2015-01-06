@@ -49,7 +49,7 @@ __FBSDID("$FreeBSD$");
 #define	INIT_ARM_STACK_SIZE	2048
 
 	.text
-	.align	0
+	.align	2
 
 /*
  * On entry for	FreeBSD	boot ABI:
@@ -84,11 +84,9 @@ ASENTRY_NP(_start)
 	 */
 	mrc	CP15_SCTLR(r7)
 	tst	r7, #CPU_CONTROL_DC_ENABLE
-	beq	1f
-	bic	r7, #CPU_CONTROL_DC_ENABLE
-	mcr	CP15_SCTLR(r7)
-	ISB
-	bl	dcache_wbinv_poc_all
+	blne	dcache_wbinv_poc_all
+
+	/* ! Do not write to memory between wbinv and disabling cache ! */
 
 	/*
 	 * Now there are no dirty lines, but there may still be lines marked
@@ -96,6 +94,7 @@ ASENTRY_NP(_start)
 	 * before setting up new page tables and re-enabling the mmu.
 	 */
 1:	
+	bic	r7, #CPU_CONTROL_DC_ENABLE
 	bic	r7, #CPU_CONTROL_MMU_ENABLE
 	bic	r7, #CPU_CONTROL_IC_ENABLE
 	bic	r7, #CPU_CONTROL_UNAL_ENABLE
@@ -340,7 +339,7 @@ END(reinit_mmu)
  *
  * Addresses must be 1MiB aligned
  */
-ASENTRY_NP(build_pagetables)
+build_pagetables:
 	/* Set the required page attributed */
 #if defined(ARM_NEW_PMAP)
 	ldr	r4, =PTE1_V|PTE1_A|PTE1_AP_KRW|TEX1_CLASS_0
@@ -374,7 +373,7 @@ VA_TO_PA_POINTER(Lpagetable, boot_pt1)
 
 .Lmainreturned:
 	.asciz	"main()	returned"
-	.align	0
+	.align	2
 
 	.bss
 svcstk:
@@ -391,7 +390,7 @@ boot_pt1:
 	.space	L1_TABLE_SIZE
 
 	.text
-	.align	0
+	.align	2
 
 .Lcpufuncs:
 	.word	_C_LABEL(cpufuncs)
@@ -444,11 +443,11 @@ ASENTRY_NP(mpentry)
 	adr	r0, .Lmpreturned
 	b	_C_LABEL(panic)
 	/* NOTREACHED */
+END(mpentry)
 
 .Lmpreturned:
 	.asciz	"init_secondary() returned"
-	.align	0
-END(mpentry)
+	.align	2
 #endif
 
 ENTRY_NP(cpu_halt)
@@ -462,7 +461,7 @@ ENTRY_NP(cpu_halt)
 	teq	r4, #0
 	movne	pc, r4
 1:	
-	wfi
+	WFI
 	b	1b
 
 	/*
@@ -521,11 +520,12 @@ ENTRY_NP(sigcode)
 
 	/* Branch back to retry	SYS_sigreturn */
 	b	. - 16
+END(sigcode)
 
 	.word	SYS_sigreturn
 	.word	SYS_exit
 
-	.align	0
+	.align	2
 	.global	_C_LABEL(esigcode)
 		_C_LABEL(esigcode):
 
@@ -533,5 +533,5 @@ ENTRY_NP(sigcode)
 	.global	szsigcode
 szsigcode:
 	.long esigcode-sigcode
-END(sigcode)
+
 /* End of locore.S */

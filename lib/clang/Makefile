@@ -11,11 +11,6 @@ _libclangstaticanalyzer= \
 _libclangarcmigrate= \
 	libclangarcmigrate
 .endif # MK_CLANG_FULL
-.if ${MK_CLANG_FULL} != "no" || ${MK_LLDB} != "no"
-_libclangrewriter= \
-	libclangrewritecore \
-	libclangrewritefrontend
-.endif # (MK_CLANG_FULL || MK_LLDB)
 
 SUBDIR=	libclanganalysis \
 	${_libclangarcmigrate} \
@@ -28,7 +23,8 @@ SUBDIR=	libclanganalysis \
 	libclangfrontendtool \
 	libclanglex \
 	libclangparse \
-	${_libclangrewriter} \
+	libclangrewritefrontend \
+	libclangrewrite \
 	libclangsema \
 	libclangserialization \
 	${_libclangstaticanalyzer} \
@@ -51,6 +47,7 @@ SUBDIR=	libclanganalysis \
 	libllvmobjcarcopts \
 	libllvmobject \
 	libllvmoption \
+	libllvmprofiledata \
 	libllvmscalaropts \
 	libllvmselectiondag \
 	libllvmsupport \
@@ -81,6 +78,7 @@ SUBDIR=	libclanganalysis \
 	libllvmpowerpcasmparser \
 	libllvmpowerpccodegen \
 	libllvmpowerpcdesc \
+	libllvmpowerpcdisassembler \
 	libllvmpowerpcinfo \
 	libllvmpowerpcinstprinter \
 	libllvmsparcasmparser \
@@ -98,7 +96,8 @@ SUBDIR=	libclanganalysis \
 	libllvmx86utils
 
 .if ${MK_CLANG_EXTRAS} != "no"
-SUBDIR+=libllvmdebuginfo
+SUBDIR+=libllvmdebuginfo \
+	libllvmmcanalysis
 .endif # MK_CLANG_EXTRAS
 .if ${MK_CLANG_EXTRAS} != "no" || ${MK_LLDB} != "no"
 SUBDIR+=libllvmexecutionengine \
@@ -120,6 +119,7 @@ SUBDIR+=liblldb \
 	liblldbExpression \
 	liblldbHostCommon \
 	liblldbHostFreeBSD \
+	liblldbHostPOSIX \
 	liblldbInterpreter \
 	liblldbSymbol \
 	liblldbTarget \
@@ -131,8 +131,11 @@ SUBDIR+=liblldb \
 	liblldbPluginDynamicLoaderStatic \
 	liblldbPluginDynamicLoaderPosixDYLD \
 	liblldbPluginInstructionARM \
+	liblldbPluginInstructionARM64 \
+	liblldbPluginJITLoaderGDB \
 	liblldbPluginObjectContainerBSDArchive \
 	liblldbPluginObjectFileELF \
+	liblldbPluginObjectFileJIT \
 	liblldbPluginPlatformFreeBSD \
 	liblldbPluginPlatformGDB \
 	liblldbPluginProcessElfCore \
