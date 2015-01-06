@@ -69,7 +69,7 @@ ENTRY(__setjmp)
 	/* Return value */
 	mov	x0, #0
 	ret
-END(setjmp)
+END(__setjmp)
 
 ENTRY(__longjmp)
 	WEAK_REFERENCE(__longjmp, longjmp)
@@ -105,5 +105,5 @@ ENTRY(__longjmp)
 	/* Load the return value */
 	mov	x0, x1
 	ret
-END(longjmp)
+END(__longjmp)
 

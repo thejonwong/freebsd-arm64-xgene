@@ -49,4 +49,4 @@ ENTRY(__sys_pipe)
 	/* Return */
 	mov	x0, #0
 	ret
-END(pipe)
+END(__sys_pipe)
