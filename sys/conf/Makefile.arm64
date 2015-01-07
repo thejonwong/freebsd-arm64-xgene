@@ -33,6 +33,9 @@ S=	../../..
 
 INCLUDES+= -I$S/contrib/libfdt
 
+# We generally don't want fpu instructions in the kernel.
+CFLAGS += -mgeneral-regs-only
+
 %BEFORE_DEPEND
 
 %OBJS
