@@ -174,7 +174,7 @@ data_abort(struct trapframe *frame, uint64_t esr, int lower)
 				sig = SIGSEGV;
 			call_trapsignal(td, sig, 0);
 		} else
-			panic("vm_fault failed: %llx", frame->tf_elr);
+			panic("vm_fault failed: %lx", frame->tf_elr);
 	}
 
 	if (lower)
@@ -187,12 +187,12 @@ print_registers(struct trapframe *frame)
 	u_int reg;
 
 	for (reg = 0; reg < 31; reg++) {
-		printf(" %sx%d: %llx\n", (reg < 10) ? " " : "", reg, frame->tf_x[reg]);
+		printf(" %sx%d: %lx\n", (reg < 10) ? " " : "", reg, frame->tf_x[reg]);
 	}
-	printf("  sp: %llx\n", frame->tf_sp);
-	printf("  lr: %llx\n", frame->tf_lr);
-	printf(" elr: %llx\n", frame->tf_elr);
-	printf("spsr: %llx\n", frame->tf_spsr);
+	printf("  sp: %lx\n", frame->tf_sp);
+	printf("  lr: %lx\n", frame->tf_lr);
+	printf(" elr: %lx\n", frame->tf_elr);
+	printf("spsr: %lx\n", frame->tf_spsr);
 }
 
 void
@@ -221,7 +221,7 @@ do_el1h_sync(struct trapframe *frame)
 
 	if (0) {
 		printf("In do_el1h_sync\n");
-		printf(" esr: %llx\n", esr);
+		printf(" esr: %lx\n", esr);
 		printf("excp: %x\n", exception);
 		print_registers(frame);
 	}
@@ -251,7 +251,7 @@ do_el0_sync(struct trapframe *frame)
 	if (0)
 	{
 		printf("In do_el0_sync\n");
-		printf(" esr: %llx\n", esr);
+		printf(" esr: %lx\n", esr);
 		printf("excp: %x\n", exception);
 		print_registers(frame);
 	}
@@ -275,12 +275,12 @@ do_el0_error(struct trapframe *frame)
 	u_int reg;
 
 	for (reg = 0; reg < 31; reg++) {
-		printf(" %sx%d: %llx\n", (reg < 10) ? " " : "", reg, frame->tf_x[reg]);
+		printf(" %sx%d: %lx\n", (reg < 10) ? " " : "", reg, frame->tf_x[reg]);
 	}
-	printf("  sp: %llx\n", frame->tf_sp);
-	printf("  lr: %llx\n", frame->tf_lr);
-	printf(" elr: %llx\n", frame->tf_elr);
-	printf("spsr: %llx\n", frame->tf_spsr);
+	printf("  sp: %lx\n", frame->tf_sp);
+	printf("  lr: %lx\n", frame->tf_lr);
+	printf(" elr: %lx\n", frame->tf_elr);
+	printf("spsr: %lx\n", frame->tf_spsr);
 	panic("do_el0_error");
 }
 

@@ -576,7 +576,7 @@ add_efi_map_entries(struct efi_map_header *efihdr, vm_paddr_t *physmap,
 				type = types[p->md_type];
 			else
 				type = "<INVALID>";
-			printf("%23s %012llx %12p %08llx ", type, p->md_phys,
+			printf("%23s %012lx %12p %08lx ", type, p->md_phys,
 			    p->md_virt, p->md_pages);
 			if (p->md_attr & EFI_MD_ATTR_UC)
 				printf("UC ");
@@ -643,7 +643,7 @@ try_load_dtb(caddr_t kmdp)
 		return;
 	}
 
-	printf("dtbp = %llx\n", dtbp);
+	printf("dtbp = %lx\n", dtbp);
 
 	if (OF_install(OFW_FDT, 0) == FALSE)
 		panic("Cannot install FDT");
@@ -692,9 +692,9 @@ initarm(struct arm64_bootparams *abp)
 	mem_len = 0;
 	for (i = 0; i < physmap_idx; i += 2) {
 		mem_len += physmap[i + 1] - physmap[i];
-		printf("%llx - %llx\n", physmap[i], physmap[i + 1]);
+		printf("%lx - %lx\n", physmap[i], physmap[i + 1]);
 	}
-	printf("Total = %llx\n", mem_len);
+	printf("Total = %lx\n", mem_len);
 
 	/* Set the pcpu data, this is needed by pmap_bootstrap */
 	set_curthread(&thread0);

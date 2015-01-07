@@ -939,8 +939,8 @@ pmap_bootstrap(vm_offset_t l1pt, vm_paddr_t kernstart, vm_size_t kernlen)
 	kern_delta = KERNBASE - kernstart;
 	physmem = 0;
 
-	printf("pmap_bootstrap %llx %llx %llx\n", l1pt, kernstart, kernlen);
-	printf("%llx\n", l1pt);
+	printf("pmap_bootstrap %lx %lx %lx\n", l1pt, kernstart, kernlen);
+	printf("%lx\n", l1pt);
 	printf("%lx\n", (KERNBASE >> L1_SHIFT) & Ln_ADDR_MASK);
 
 	/* Set this early so we can use the pagetable walking functions */
@@ -1737,7 +1737,7 @@ pmap_kenter_device(vm_offset_t va, vm_paddr_t pa)
 	KASSERT((va & L3_OFFSET) == 0,
 	   ("pmap_kenter_device: Invalid virtual address"));
 	l3 = pmap_l3(kernel_pmap, va);
-	KASSERT(l3 != NULL, ("Invalid page table, va: 0x%llx", va));
+	KASSERT(l3 != NULL, ("Invalid page table, va: 0x%lx", va));
 	*l3 = (pa & ~L3_OFFSET) | ATTR_AF | L3_PAGE | ATTR_IDX(DEVICE_MEMORY);
 }
 
