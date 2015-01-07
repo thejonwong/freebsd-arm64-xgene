@@ -373,6 +373,7 @@ ahci_pci_attach(device_t dev)
 	int	error, i;
 	uint32_t devid = pci_get_devid(dev);
 	uint8_t revid = pci_get_revid(dev);
+	struct pci_map *map;
 
 	i = 0;
 	while (ahci_ids[i].id != 0 &&
@@ -386,12 +387,18 @@ ahci_pci_attach(device_t dev)
 	    pci_get_subvendor(dev) == 0x1043 &&
 	    pci_get_subdevice(dev) == 0x81e4)
 		ctlr->quirks |= AHCI_Q_SATA1_UNIT0;
-	/* if we have a memory BAR(5) we are likely on an AHCI part */
 	ctlr->vendorid = pci_get_vendor(dev);
 	ctlr->deviceid = pci_get_device(dev);
 	ctlr->subvendorid = pci_get_subvendor(dev);
 	ctlr->subdeviceid = pci_get_subdevice(dev);
-	ctlr->r_rid = PCIR_BAR(5);
+
+	/* AHCI Base Address is BAR(5) by default, unless BARs are 64-bit */
+	map = pci_find_bar(dev, PCIR_BAR(4));
+	if (map != NULL &&
+	    ((map->pm_value & PCIM_BAR_MEM_TYPE) == PCIM_BAR_MEM_64))
+		ctlr->r_rid = PCIR_BAR(4);
+	else
+		ctlr->r_rid = PCIR_BAR(5);
 	if (!(ctlr->r_mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
 	    &ctlr->r_rid, RF_ACTIVE)))
 		return ENXIO;
