@@ -2,12 +2,7 @@
 
 .include <src.opts.mk>
 
-SUBDIR= csu libgcc libdialog libregex libreadline
-
-# XXX ARM64TODO: Fix these
-.if ${MACHINE} != "arm64"
-SUBDIR+=libgcov libgomp
-.endif
+SUBDIR= csu libgcc libgcov libdialog libgomp libregex libreadline
 
 .if ${MK_SSP} != "no"
 SUBDIR+= libssp
