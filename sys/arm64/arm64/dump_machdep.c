@@ -65,4 +65,5 @@ dumpsys_write_aux_headers(struct dumperinfo *di)
 {
 
 	printf("dumpsys_map_chunk\n");
+	return (0);
 }
