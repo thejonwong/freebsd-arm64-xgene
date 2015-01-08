@@ -31,18 +31,38 @@ __FBSDID("$FreeBSD$");
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
+#include <sys/kerneldump.h>
+#include <sys/proc.h>
 #include <sys/sysctl.h>
+
+#include <machine/dump.h>
 
 int do_minidump = 1;
 TUNABLE_INT("debug.minidump", &do_minidump);
 SYSCTL_INT(_debug, OID_AUTO, minidump, CTLFLAG_RW, &do_minidump, 0,
     "Enable mini crash dumps");
 
-int
-dumpsys(struct dumperinfo *di)
+void
+dumpsys_wbinv_all(void)
 {
 
-	printf("dumpsys\n");
-	return (ENXIO);
+	printf("dumpsys_wbinv_all\n");
 }
 
+void
+dumpsys_map_chunk(vm_paddr_t pa, size_t chunk __unused, void **va)
+{
+
+	printf("dumpsys_map_chunk\n");
+	while(1);
+}
+
+/*
+ * Add a header to be used by libkvm to get the va to pa delta
+ */
+int
+dumpsys_write_aux_headers(struct dumperinfo *di)
+{
+
+	printf("dumpsys_map_chunk\n");
+}

@@ -80,7 +80,8 @@ struct pcpu *pcpup = &__pcpu[0];
 
 static struct trapframe proc0_tf;
 
-vm_paddr_t phys_avail[PHYS_AVAIL_SIZE];
+vm_paddr_t phys_avail[PHYS_AVAIL_SIZE + 2];
+vm_paddr_t dump_avail[PHYS_AVAIL_SIZE + 2];
 
 int early_boot = 1;
 int cold = 1;
