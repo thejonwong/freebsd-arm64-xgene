@@ -38,6 +38,7 @@ SRCF=	absvdi2 \
 	cmpti2 \
 	comparedf2 \
 	comparesf2 \
+	comparetf2 \
 	ctzdi2 \
 	ctzsi2 \
 	ctzti2 \
@@ -51,6 +52,8 @@ SRCF=	absvdi2 \
 	divxc3 \
 	enable_execute_stack \
 	eprintf \
+	extenddftf2 \
+	extendsftf2 \
 	ffsdi2 \
 	ffsti2 \
 	fixdfdi \
@@ -122,6 +125,8 @@ SRCF=	absvdi2 \
 	subvsi3 \
 	subvti3 \
 	trampoline_setup \
+	trunctfdf2 \
+	trunctfsf2 \
 	ucmpdi2 \
 	ucmpti2 \
 	udivdi3 \
@@ -143,6 +148,7 @@ SRCF+=	adddf3 \
 	fixsfsi \
 	floatsidf \
 	floatsisf \
+	floatsitf \
 	muldf3 \
 	mulsf3 \
 	subdf3 \
@@ -178,6 +184,16 @@ SRCS+=	${file}.S
 SRCS+=	${file}.c
 . endif
 .endfor
+
+.if ${MACHINE_CPUARCH} == "arm64"
+# These files live in the ppc directory so we can't include them using
+# SRCF above. We also need to adjust the path to add them.
+.PATH: ${CRTSRC}/ppc
+SRCS+=	fixtfdi.c \
+	fixunstfdi.c \
+	floatditf.c \
+	floatunditf.c
+.endif
 
 .if ${MACHINE_CPUARCH} == "arm"
 SRCS+=	aeabi_dcmp.S \
