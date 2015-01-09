@@ -63,6 +63,8 @@ __ElfType(Auxinfo);
 
 #define	ELF_ARCH	EM_AARCH64
 
+#define	ELF_MACHINE_OK(x) ((x) == (ELF_ARCH))
+
 /* Values for a_type. */
 #define	AT_NULL		0	/* Terminates the vector. */
 #define	AT_IGNORE	1	/* Ignored entry. */
