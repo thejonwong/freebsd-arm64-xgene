@@ -47,10 +47,10 @@ __FBSDID("$FreeBSD$");
 #include "gic_v3_reg.h"
 #include "gic_v3_var.h"
 
-devclass_t arm_gic_v3_its_devclass;
+devclass_t gic_v3_its_devclass;
 
 int
-arm_gic_v3_its_attach(device_t dev)
+gic_v3_its_attach(device_t dev)
 {
 	struct gic_v3_its_softc *sc;
 	int rid;

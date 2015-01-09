@@ -60,7 +60,7 @@ __FBSDID("$FreeBSD$");
  */
 MALLOC_DEFINE(M_GIC_V3, "GICv3", GIC_V3_DEVSTR);
 
-devclass_t arm_gic_v3_devclass;
+devclass_t gic_v3_devclass;
 
 /*
  * Helper functions and definitions.
@@ -122,7 +122,7 @@ static gic_v3_initseq_t gic_v3_secondary_init[] __unused = {
  * Device interface.
  */
 int
-arm_gic_v3_attach(device_t dev)
+gic_v3_attach(device_t dev)
 {
 	struct gic_v3_softc *sc;
 	gic_v3_initseq_t *init_func;
@@ -208,7 +208,7 @@ error:
 }
 
 int
-arm_gic_v3_detach(device_t dev)
+gic_v3_detach(device_t dev)
 {
 	struct gic_v3_softc *sc;
 	size_t i;
@@ -234,7 +234,7 @@ arm_gic_v3_detach(device_t dev)
  * PIC interface.
  */
 void
-arm_gic_v3_dispatch(device_t dev, struct trapframe *frame)
+gic_v3_dispatch(device_t dev, struct trapframe *frame)
 {
 	uint64_t active_irq;
 
@@ -259,14 +259,14 @@ arm_gic_v3_dispatch(device_t dev, struct trapframe *frame)
 }
 
 void
-arm_gic_v3_eoi(device_t dev, u_int irq)
+gic_v3_eoi(device_t dev, u_int irq)
 {
 
 	gic_icc_write(EOIR1, (uint64_t)irq);
 }
 
 void
-arm_gic_v3_mask_irq(device_t dev, u_int irq)
+gic_v3_mask_irq(device_t dev, u_int irq)
 {
 	struct gic_v3_softc *sc;
 	uint32_t mask;
@@ -289,7 +289,7 @@ arm_gic_v3_mask_irq(device_t dev, u_int irq)
 }
 
 void
-arm_gic_v3_unmask_irq(device_t dev, u_int irq)
+gic_v3_unmask_irq(device_t dev, u_int irq)
 {
 	struct gic_v3_softc *sc;
 	uint32_t mask;

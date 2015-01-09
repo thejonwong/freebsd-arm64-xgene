@@ -72,18 +72,18 @@ struct gic_v3_softc {
 	u_int			gic_nirqs;
 };
 
-extern devclass_t arm_gic_v3_devclass;
+extern devclass_t gic_v3_devclass;
 
 MALLOC_DECLARE(M_GIC_V3);
 
-/* Device and PIC methods starting with arm_gic_v3_ */
-int arm_gic_v3_attach(device_t dev);
-int arm_gic_v3_detach(device_t dev);
+/* Device and PIC methods */
+int gic_v3_attach(device_t dev);
+int gic_v3_detach(device_t dev);
 
-void arm_gic_v3_dispatch(device_t, struct trapframe *);
-void arm_gic_v3_eoi(device_t, u_int);
-void arm_gic_v3_mask_irq(device_t, u_int);
-void arm_gic_v3_unmask_irq(device_t, u_int);
+void gic_v3_dispatch(device_t, struct trapframe *);
+void gic_v3_eoi(device_t, u_int);
+void gic_v3_mask_irq(device_t, u_int);
+void gic_v3_unmask_irq(device_t, u_int);
 
 /*
  * ITS
@@ -99,8 +99,8 @@ struct gic_v3_its_softc {
 	bus_space_handle_t	gic_its_bsh;
 };
 
-extern devclass_t arm_gic_v3_its_devclass;
+extern devclass_t gic_v3_its_devclass;
 
-int arm_gic_v3_its_attach(device_t);
+int gic_v3_its_attach(device_t);
 
 #endif /* _GIC_V3_VAR_H_ */

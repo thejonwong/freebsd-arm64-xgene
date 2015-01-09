@@ -61,34 +61,34 @@ struct gic_v3_ofw_devinfo {
 	struct resource_list	di_rl;
 };
 
-static int arm_gic_v3_fdt_probe(device_t);
-static int arm_gic_v3_fdt_attach(device_t);
-static int arm_gic_v3_fdt_detach(device_t);
+static int gic_v3_fdt_probe(device_t);
+static int gic_v3_fdt_attach(device_t);
+static int gic_v3_fdt_detach(device_t);
 
-static struct resource * arm_gic_v3_bus_alloc_res(device_t,
+static struct resource * gic_v3_bus_alloc_res(device_t,
     device_t, int, int *, u_long, u_long, u_long, u_int);
 
 static const struct ofw_bus_devinfo *
-arm_gic_v3_ofw_get_devinfo(device_t __unused, device_t);
+gic_v3_ofw_get_devinfo(device_t __unused, device_t);
 
-static device_method_t arm_gic_v3_methods[] = {
+static device_method_t gic_v3_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		arm_gic_v3_fdt_probe),
-	DEVMETHOD(device_attach,	arm_gic_v3_fdt_attach),
-	DEVMETHOD(device_detach,	arm_gic_v3_fdt_detach),
+	DEVMETHOD(device_probe,		gic_v3_fdt_probe),
+	DEVMETHOD(device_attach,	gic_v3_fdt_attach),
+	DEVMETHOD(device_detach,	gic_v3_fdt_detach),
 
 	/* PIC interface */
-	DEVMETHOD(pic_dispatch,		arm_gic_v3_dispatch),
-	DEVMETHOD(pic_eoi,		arm_gic_v3_eoi),
-	DEVMETHOD(pic_mask,		arm_gic_v3_mask_irq),
-	DEVMETHOD(pic_unmask,		arm_gic_v3_unmask_irq),
+	DEVMETHOD(pic_dispatch,		gic_v3_dispatch),
+	DEVMETHOD(pic_eoi,		gic_v3_eoi),
+	DEVMETHOD(pic_mask,		gic_v3_mask_irq),
+	DEVMETHOD(pic_unmask,		gic_v3_unmask_irq),
 
 	/* Bus interface */
-	DEVMETHOD(bus_alloc_resource,		arm_gic_v3_bus_alloc_res),
+	DEVMETHOD(bus_alloc_resource,		gic_v3_bus_alloc_res),
 	DEVMETHOD(bus_activate_resource,	bus_generic_activate_resource),
 
 	/* ofw_bus interface */
-	DEVMETHOD(ofw_bus_get_devinfo,	arm_gic_v3_ofw_get_devinfo),
+	DEVMETHOD(ofw_bus_get_devinfo,	gic_v3_ofw_get_devinfo),
 	DEVMETHOD(ofw_bus_get_compat,	ofw_bus_gen_get_compat),
 	DEVMETHOD(ofw_bus_get_model,	ofw_bus_gen_get_model),
 	DEVMETHOD(ofw_bus_get_name,	ofw_bus_gen_get_name),
@@ -99,15 +99,15 @@ static device_method_t arm_gic_v3_methods[] = {
 	DEVMETHOD_END
 };
 
-static driver_t arm_gic_v3_driver = {
+static driver_t gic_v3_driver = {
 	"gic",
-	arm_gic_v3_methods,
+	gic_v3_methods,
 	sizeof(struct gic_v3_softc),
 };
 
-EARLY_DRIVER_MODULE(gic_v3, simplebus, arm_gic_v3_driver, arm_gic_v3_devclass, 0, 0,
+EARLY_DRIVER_MODULE(gic_v3, simplebus, gic_v3_driver, gic_v3_devclass, 0, 0,
     BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
-EARLY_DRIVER_MODULE(gic_v3, ofwbus, arm_gic_v3_driver, arm_gic_v3_devclass, 0, 0,
+EARLY_DRIVER_MODULE(gic_v3, ofwbus, gic_v3_driver, gic_v3_devclass, 0, 0,
     BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
 
 /*
@@ -119,7 +119,7 @@ static int gic_v3_fdt_bus_attach(device_t);
  * Device interface.
  */
 static int
-arm_gic_v3_fdt_probe(device_t dev)
+gic_v3_fdt_probe(device_t dev)
 {
 
 	if (!ofw_bus_status_okay(dev))
@@ -133,7 +133,7 @@ arm_gic_v3_fdt_probe(device_t dev)
 }
 
 static int
-arm_gic_v3_fdt_attach(device_t dev)
+gic_v3_fdt_attach(device_t dev)
 {
 	struct gic_v3_softc *sc;
 	pcell_t redist_regions;
@@ -151,7 +151,7 @@ arm_gic_v3_fdt_attach(device_t dev)
 	else
 		sc->gic_r_nregions = fdt32_to_cpu(redist_regions);
 
-	err = arm_gic_v3_attach(dev);
+	err = gic_v3_attach(dev);
 	if (err)
 		goto error;
 	/*
@@ -174,21 +174,21 @@ error:
 		    "Failed to attach. Error %d\n", err);
 	}
 	/* Failure so free resources */
-	arm_gic_v3_fdt_detach(dev);
+	gic_v3_fdt_detach(dev);
 
 	return (err);
 }
 
 static int
-arm_gic_v3_fdt_detach(device_t dev)
+gic_v3_fdt_detach(device_t dev)
 {
 
-	return (arm_gic_v3_detach(dev));
+	return (gic_v3_detach(dev));
 }
 
 /* ofw_bus interface */
 static const struct ofw_bus_devinfo *
-arm_gic_v3_ofw_get_devinfo(device_t bus __unused, device_t child)
+gic_v3_ofw_get_devinfo(device_t bus __unused, device_t child)
 {
 	struct gic_v3_ofw_devinfo *di;
 
@@ -198,7 +198,7 @@ arm_gic_v3_ofw_get_devinfo(device_t bus __unused, device_t child)
 
 /* Bus interface */
 static struct resource *
-arm_gic_v3_bus_alloc_res(device_t bus, device_t child, int type, int *rid,
+gic_v3_bus_alloc_res(device_t bus, device_t child, int type, int *rid,
     u_long start, u_long end, u_long count, u_int flags)
 {
 	struct gic_v3_ofw_devinfo *di;
@@ -302,29 +302,29 @@ gic_v3_fdt_bus_attach(device_t dev)
 	return (bus_generic_attach(dev));
 }
 
-static int arm_gic_v3_its_fdt_probe(device_t dev);
-static int arm_gic_v3_its_fdt_attach(device_t dev);
+static int gic_v3_its_fdt_probe(device_t dev);
+static int gic_v3_its_fdt_attach(device_t dev);
 
-static device_method_t arm_gic_v3_its_methods[] = {
+static device_method_t gic_v3_its_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		arm_gic_v3_its_fdt_probe),
-	DEVMETHOD(device_attach,	arm_gic_v3_its_fdt_attach),
+	DEVMETHOD(device_probe,		gic_v3_its_fdt_probe),
+	DEVMETHOD(device_attach,	gic_v3_its_fdt_attach),
 
 	/* End */
 	DEVMETHOD_END
 };
 
-static driver_t arm_gic_v3_its_driver = {
+static driver_t gic_v3_its_driver = {
 	"gic-its",
-	arm_gic_v3_its_methods,
+	gic_v3_its_methods,
 	sizeof(struct gic_v3_its_softc),
 };
 
-EARLY_DRIVER_MODULE(gic_v3_its, gic, arm_gic_v3_its_driver, arm_gic_v3_its_devclass, 0, 0,
+EARLY_DRIVER_MODULE(gic_v3_its, gic, gic_v3_its_driver, gic_v3_its_devclass, 0, 0,
     BUS_PASS_INTERRUPT + BUS_PASS_ORDER_MIDDLE);
 
 static int
-arm_gic_v3_its_fdt_probe(device_t dev)
+gic_v3_its_fdt_probe(device_t dev)
 {
 
 	if (!ofw_bus_status_okay(dev))
@@ -338,8 +338,8 @@ arm_gic_v3_its_fdt_probe(device_t dev)
 }
 
 static int
-arm_gic_v3_its_fdt_attach(device_t dev)
+gic_v3_its_fdt_attach(device_t dev)
 {
 
-	return (arm_gic_v3_its_attach(dev));
+	return (gic_v3_its_attach(dev));
 }
