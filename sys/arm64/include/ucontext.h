@@ -32,13 +32,27 @@
 #ifndef _MACHINE_UCONTEXT_H_
 #define	_MACHINE_UCONTEXT_H_
 
+struct gpregs {
+	unsigned long long gp_sp;
+	unsigned long long gp_lr;
+	unsigned long long gp_elr;
+	unsigned long long gp_spsr;
+	unsigned long long gp_x[30];
+};
+
+struct fpregs {
+	__uint128_t	fp_q[32];
+	uint32_t	fp_cr;
+	uint32_t	fp_sr;
+	u_int		fp_flags;
+};
+
 struct __mcontext {
-	unsigned long long mc_sp;
-	unsigned long long mc_lr;
-	unsigned long long mc_elr;
-	unsigned long long mc_spsr;
-	unsigned long long mc_regs[30];
-} __aligned(64);
+	struct gpregs	mc_gpregs;
+	struct fpregs	mc_fpregs;
+	u_int		mc_flags;
+#define	_MC_FP_VALID	0x1	/* Set when mc_fpregs has valid data */
+};
 
 typedef struct __mcontext mcontext_t;
 

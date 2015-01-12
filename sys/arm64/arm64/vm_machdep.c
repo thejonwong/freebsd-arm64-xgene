@@ -30,6 +30,7 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/limits.h>
 #include <sys/proc.h>
 #include <sys/sf_buf.h>
 #include <sys/signal.h>
@@ -80,6 +81,7 @@ cpu_fork(struct thread *td1, struct proc *p2, struct thread *td2, int flags)
 	td2->td_pcb->pcb_x[9] = (uintptr_t)td2;
 	td2->td_pcb->pcb_x[PCB_LR] = (uintptr_t)fork_trampoline;
 	td2->td_pcb->pcb_sp = (uintptr_t)td2->td_frame;
+	td2->td_pcb->pcb_vfpcpu = UINT_MAX;
 
 	/* Setup to release spin count in fork_exit(). */
 	td2->td_md.md_spinlock_count = 1;
@@ -147,6 +149,7 @@ cpu_set_upcall(struct thread *td, struct thread *td0)
 	td->td_pcb->pcb_x[9] = (uintptr_t)td;
 	td->td_pcb->pcb_x[PCB_LR] = (uintptr_t)fork_trampoline;
 	td->td_pcb->pcb_sp = (uintptr_t)td->td_frame;
+	td->td_pcb->pcb_vfpcpu = UINT_MAX;
 
 	/* Setup to release spin count in fork_exit(). */
 	td->td_md.md_spinlock_count = 1;
@@ -212,6 +215,7 @@ cpu_set_fork_handler(struct thread *td, void (*func)(void *), void *arg)
 	td->td_pcb->pcb_x[9] = (uintptr_t)arg;
 	td->td_pcb->pcb_x[PCB_LR] = (uintptr_t)fork_trampoline;
 	td->td_pcb->pcb_sp = (uintptr_t)td->td_frame;
+	td->td_pcb->pcb_vfpcpu = UINT_MAX;
 }
 
 void

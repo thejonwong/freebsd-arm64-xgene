@@ -47,6 +47,10 @@ __FBSDID("$FreeBSD$");
 
 #include <machine/frame.h>
 
+#ifdef VFP
+#include <machine/vfp.h>
+#endif
+
 /* Called from exception.S */
 void do_el1h_sync(struct trapframe *);
 void do_el0_sync(struct trapframe *);
@@ -228,6 +232,8 @@ do_el1h_sync(struct trapframe *frame)
 	}
 
 	switch(exception) {
+	case EXCP_FP_SIMD:
+		panic("VFP exception in the kernel");
 	case EXCP_DATA_ABORT:
 		data_abort(frame, esr, 0);
 		break;
@@ -258,6 +264,13 @@ do_el0_sync(struct trapframe *frame)
 	}
 
 	switch(exception) {
+	case EXCP_FP_SIMD:
+#ifdef VFP
+		vfp_restore_state();
+#else
+		panic("VFP exception in userland");
+#endif
+		break;
 	case EXCP_SVC:
 		svc_handler(frame);
 		break;

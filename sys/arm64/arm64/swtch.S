@@ -47,6 +47,13 @@ ENTRY(cpu_throw)
 #error cpu_throw needs to be ported to support SMP
 #endif
 
+#ifdef VFP
+	/* Backup the new thread pointer around a call to C code */
+	mov	x19, x1
+	bl	vfp_discard
+	mov	x1, x19
+#endif
+
 	/* Load the PCPU area */
 	/* TODO: Adjust for the core we are on */
 	ldr	x3, .Lcurpcpu
@@ -139,6 +146,16 @@ ENTRY(cpu_switch)
 	mov	x5, sp
 	mrs	x6, tpidr_el0
 	stp	x5, x6, [x4, #PCB_SP]
+
+#ifdef VFP
+	mov	x19, x0
+	mov	x20, x1
+	mov	x21, x2
+	bl	vfp_save_state
+	mov	x2, x21
+	mov	x1, x20
+	mov	x0, x19
+#endif
 
 	/*
 	 * Restore the saved context.

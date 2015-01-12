@@ -1,6 +1,9 @@
 /*-
- * Copyright (c) 2001 Jake Burkholder.
+ * Copyright (c) 2015 The FreeBSD Foundation
  * All rights reserved.
+ *
+ * This software was developed by Andrew Turner under
+ * sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,35 +29,18 @@
  * $FreeBSD$
  */
 
-#ifndef	_MACHINE_PCB_H_
-#define	_MACHINE_PCB_H_
-
-#ifndef LOCORE
-
-struct trapframe;
-
-#define	PCB_LR		30
-struct pcb {
-	uint64_t	pcb_x[31];
-	/* These two need to be in order as we access them together */
-	uint64_t	pcb_sp;
-	uint64_t	pcb_tpidr_el0;
-	vm_offset_t	pcb_l1addr;
-
-	/* Place last to simplify the asm to access the rest if the struct */
-	__uint128_t	pcb_vfp[32];
-	uint32_t	pcb_fpcr;
-	uint32_t	pcb_fpsr;
-	u_int		pcb_fpflags;
-#define	PCB_FP_STARTED	0x01
-	u_int		pcb_vfpcpu;	/* Last cpu this thread ran VFP code */
-};
+#ifndef _MACHINE__VFP_H_
+#define _MACHINE__VFP_H_
 
 #ifdef _KERNEL
-void	makectx(struct trapframe *tf, struct pcb *pcb);
-int	savectx(struct pcb *pcb) __returns_twice;
+
+#ifndef LOCORE
+void	vfp_init(void);
+void	vfp_discard(struct thread *);
+void	vfp_restore_state(void);
+void	vfp_save_state(struct thread *);
 #endif
 
-#endif /* !LOCORE */
+#endif
 
-#endif /* !_MACHINE_PCB_H_ */
+#endif

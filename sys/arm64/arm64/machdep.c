@@ -71,6 +71,10 @@ __FBSDID("$FreeBSD$");
 #include <machine/reg.h>
 #include <machine/vmparam.h>
 
+#ifdef VFP
+#include <machine/vfp.h>
+#endif
+
 #ifdef FDT
 #include <dev/fdt/fdt_common.h>
 #include <dev/ofw/openfirm.h>
@@ -197,7 +201,7 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 
 /* Sanity check these are the same size, they will be memcpy'd to and fro */
 CTASSERT(sizeof(((struct trapframe *)0)->tf_x) ==
-    sizeof((mcontext_t *)0)->mc_regs);
+    sizeof((struct gpregs *)0)->gp_x);
 
 int
 get_mcontext(struct thread *td, mcontext_t *mcp, int clear_ret)
@@ -205,17 +209,17 @@ get_mcontext(struct thread *td, mcontext_t *mcp, int clear_ret)
 	struct trapframe *tf = td->td_frame;
 
 	if (clear_ret & GET_MC_CLEAR_RET)
-		mcp->mc_regs[0] = 0;
+		mcp->mc_gpregs.gp_x[0] = 0;
 	else
-		mcp->mc_regs[0] = tf->tf_x[0];
+		mcp->mc_gpregs.gp_x[0] = tf->tf_x[0];
 
-	memcpy(&mcp->mc_regs[1], &tf->tf_x[1],
-	    sizeof(mcp->mc_regs[0]) * (nitems(mcp->mc_regs) - 1));
+	memcpy(&mcp->mc_gpregs.gp_x[1], &tf->tf_x[1],
+	    sizeof(mcp->mc_gpregs.gp_x[1]) * (nitems(mcp->mc_gpregs.gp_x) - 1));
 
-	mcp->mc_sp = tf->tf_sp;
-	mcp->mc_lr = tf->tf_lr;
-	mcp->mc_elr = tf->tf_elr;
-	mcp->mc_spsr = tf->tf_spsr;
+	mcp->mc_gpregs.gp_sp = tf->tf_sp;
+	mcp->mc_gpregs.gp_lr = tf->tf_lr;
+	mcp->mc_gpregs.gp_elr = tf->tf_elr;
+	mcp->mc_gpregs.gp_spsr = tf->tf_spsr;
 
 	return (0);
 }
@@ -225,14 +229,71 @@ set_mcontext(struct thread *td, const mcontext_t *mcp)
 {
 	struct trapframe *tf = td->td_frame;
 
-	memcpy(tf->tf_x, mcp->mc_regs, sizeof(tf->tf_x));
+	memcpy(tf->tf_x, mcp->mc_gpregs.gp_x, sizeof(tf->tf_x));
 
-	tf->tf_sp = mcp->mc_sp;
-	tf->tf_lr = mcp->mc_lr;
-	tf->tf_elr = mcp->mc_elr;
-	tf->tf_spsr = mcp->mc_spsr;
+	tf->tf_sp = mcp->mc_gpregs.gp_sp;
+	tf->tf_lr = mcp->mc_gpregs.gp_lr;
+	tf->tf_elr = mcp->mc_gpregs.gp_elr;
+	tf->tf_spsr = mcp->mc_gpregs.gp_spsr;
 
 	return (0);
+}
+
+static void
+get_fpcontext(struct thread *td, mcontext_t *mcp)
+{
+#ifdef VFP
+	struct pcb *curpcb;
+
+	critical_enter();
+
+	curpcb = curthread->td_pcb;
+
+	if ((curpcb->pcb_fpflags & PCB_FP_STARTED) != 0) {
+		/*
+		 * If we have just been running VFP instructions we will
+		 * need to save the state to memcpy it below.
+		 */
+		vfp_save_state(td);
+
+		memcpy(mcp->mc_fpregs.fp_q, curpcb->pcb_vfp,
+		    sizeof(mcp->mc_fpregs));
+		mcp->mc_fpregs.fp_cr = curpcb->pcb_fpcr;
+		mcp->mc_fpregs.fp_sr = curpcb->pcb_fpsr;
+		mcp->mc_fpregs.fp_flags = curpcb->pcb_fpflags;
+		mcp->mc_flags |= _MC_FP_VALID;
+	}
+
+	critical_exit();
+#endif
+}
+
+static void
+set_fpcontext(struct thread *td, mcontext_t *mcp)
+{
+#ifdef VFP
+	struct pcb *curpcb;
+
+	critical_enter();
+
+	if ((mcp->mc_flags & _MC_FP_VALID) != 0) {
+		curpcb = curthread->td_pcb;
+
+		/*
+		 * Discard any vfp state for the current thread, we
+		 * are about to override it.
+		 */
+		vfp_discard(td);
+
+		memcpy(curpcb->pcb_vfp, mcp->mc_fpregs.fp_q,
+		    sizeof(mcp->mc_fpregs));
+		curpcb->pcb_fpcr = mcp->mc_fpregs.fp_cr;
+		curpcb->pcb_fpsr = mcp->mc_fpregs.fp_sr;
+		curpcb->pcb_fpflags = mcp->mc_fpregs.fp_flags;
+	}
+
+	critical_exit();
+#endif
 }
 
 void
@@ -329,6 +390,7 @@ sys_sigreturn(struct thread *td, struct sigreturn_args *uap)
 		return (EFAULT);
 
 	set_mcontext(td, &uc.uc_mcontext);
+	set_fpcontext(td, &uc.uc_mcontext);
 
 	/* Restore signal mask. */
 	kern_sigprocmask(td, SIG_SETMASK, &uc.uc_sigmask, NULL, 0);
@@ -393,6 +455,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 
 	/* Fill in the frame to copy out */
 	get_mcontext(td, &frame.sf_uc.uc_mcontext, 0);
+	get_fpcontext(td, &frame.sf_uc.uc_mcontext);
 	frame.sf_si = ksi->ksi_info;
 	frame.sf_uc.uc_sigmask = *mask;
 	frame.sf_uc.uc_stack.ss_flags = (td->td_pflags & TDP_ALTSTACK) ?
