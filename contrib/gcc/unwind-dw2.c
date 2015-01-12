@@ -1393,7 +1393,7 @@ uw_advance_context (struct _Unwind_Context *context, _Unwind_FrameState *fs)
 static inline void
 init_dwarf_reg_size_table (void)
 {
-#ifdef __aarch64__
+#ifdef __aarch64__ /* ARM64TODO */
   printf("Unimplemented: init_dwarf_reg_size_table\n");
   abort();
 #else

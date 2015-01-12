@@ -129,6 +129,7 @@ TGTS+=	${BITGTS}
 .ORDER: buildkernel reinstallkernel
 .ORDER: buildkernel reinstallkernel.debug
 
+# ARM64TODO We currently rely on ld from the aarch64-binutils port/pkg
 PATH=	/usr/local/aarch64-freebsd/bin:/sbin:/bin:/usr/sbin:/usr/bin
 MAKEOBJDIRPREFIX?=	/usr/obj
 _MAKEOBJDIRPREFIX!= /usr/bin/env -i PATH=${PATH} ${MAKE} \
