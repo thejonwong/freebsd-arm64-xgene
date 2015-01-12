@@ -118,6 +118,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mman.h>
+#include <sys/msgbuf.h>
 #include <sys/mutex.h>
 #include <sys/proc.h>
 #include <sys/rwlock.h>
@@ -932,7 +933,7 @@ pmap_bootstrap(vm_offset_t l1pt, vm_paddr_t kernstart, vm_size_t kernlen)
 	uint64_t kern_delta;
 	pt_entry_t *l2;
 	vm_offset_t va, freemempos;
-	vm_offset_t dpcpu;
+	vm_offset_t dpcpu, msgbufpv;
 	vm_paddr_t pa;
 
 	kern_delta = KERNBASE - kernstart;
@@ -1039,6 +1040,10 @@ pmap_bootstrap(vm_offset_t l1pt, vm_paddr_t kernstart, vm_size_t kernlen)
 	/* Allocate dynamic per-cpu area. */
 	alloc_pages(dpcpu, DPCPU_SIZE / PAGE_SIZE);
 	dpcpu_init((void *)dpcpu, 0);
+
+	/* Allocate memory for the msgbuf, e.g. for /sbin/dmesg */
+	alloc_pages(msgbufpv, round_page(msgbufsize) / PAGE_SIZE);
+	msgbufp = (void *)msgbufpv;
 
 	virtual_avail = roundup2(freemempos, L1_SIZE);
 	virtual_end = VM_MAX_KERNEL_ADDRESS - L2_SIZE;

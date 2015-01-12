@@ -42,6 +42,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/kdb.h> 
 #include <sys/kernel.h>
 #include <sys/linker.h>
+#include <sys/msgbuf.h>
 #include <sys/pcpu.h>
 #include <sys/proc.h>
 #include <sys/ptrace.h>
@@ -712,6 +713,7 @@ initarm(struct arm64_bootparams *abp)
 	cninit();
 
 	init_proc0(abp->kern_stack);
+	msgbufinit(msgbufp, msgbufsize);
 	mutex_init();
 	init_param2(physmem);
 	kdb_init();
