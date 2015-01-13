@@ -30,7 +30,7 @@
 #define	_MACHINE_ATOMIC_H_
 
 #define isb()  __asm __volatile("isb" : : : "memory")
-#define dsb()  __asm __volatile("dsb" : : : "memory")
+#define dsb()  __asm __volatile("dsb sy" : : : "memory")
 #define dmb()  __asm __volatile("dmb sy" : : : "memory")
 
 #define mb()   dmb()
