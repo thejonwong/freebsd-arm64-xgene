@@ -374,7 +374,6 @@ ahci_pci_attach(device_t dev)
 	int	error, i;
 	uint32_t devid = pci_get_devid(dev);
 	uint8_t revid = pci_get_revid(dev);
-	struct pci_map *map;
 
 	i = 0;
 	while (ahci_ids[i].id != 0 &&
