@@ -287,6 +287,7 @@ static const struct {
 	{0x11841039, 0x00, "SiS 966",		0},
 	{0x11851039, 0x00, "SiS 968",		0},
 	{0x01861039, 0x00, "SiS 968",		0},
+	{0xa01c177d, 0x00, "ThunderX SATA",	AHCI_Q_ABAR0},
 	{0x00000000, 0x00, NULL,		0}
 };
 
@@ -392,11 +393,9 @@ ahci_pci_attach(device_t dev)
 	ctlr->subvendorid = pci_get_subvendor(dev);
 	ctlr->subdeviceid = pci_get_subdevice(dev);
 
-	/* AHCI Base Address is BAR(5) by default, unless BARs are 64-bit */
-	map = pci_find_bar(dev, PCIR_BAR(4));
-	if (map != NULL &&
-	    ((map->pm_value & PCIM_BAR_MEM_TYPE) == PCIM_BAR_MEM_64))
-		ctlr->r_rid = PCIR_BAR(4);
+	/* Default AHCI Base Address is BAR(5), Cavium uses BAR(0) */
+	if (ctlr->quirks & AHCI_Q_ABAR0)
+		ctlr->r_rid = PCIR_BAR(0);
 	else
 		ctlr->r_rid = PCIR_BAR(5);
 	if (!(ctlr->r_mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
