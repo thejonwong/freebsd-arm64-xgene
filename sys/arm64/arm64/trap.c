@@ -125,7 +125,7 @@ data_abort(struct trapframe *frame, uint64_t esr, int lower)
 	uint64_t far;
 	int error, sig;
 
-	__asm __volatile("mrs %x0, far_el1" : "=r"(far));
+	far = READ_SPECIALREG(far_el1);
 
 	td = curthread;
 	p = td->td_proc;
@@ -202,8 +202,8 @@ do_el1h_sync(struct trapframe *frame)
 	uint64_t esr;
 
 	/* Read the esr register to get the exception details */
-	__asm __volatile("mrs %x0, esr_el1" : "=&r"(esr));
-	exception = (esr >> 26) & 0x3f;
+	esr = READ_SPECIALREG(esr_el1);
+	exception = ESR_ELx_EXCEPTION(esr);
 
 	/*
 	 * Sanity check we are in an exception er can handle. The IL bit
@@ -215,8 +215,8 @@ do_el1h_sync(struct trapframe *frame)
 	 * be set when we are in a data fault from the same EL and the ISV
 	 * bit (bit 24) is also set.
 	 */
-	KASSERT((esr & (1 << 25)) != 0 ||
-	    (exception == 0x25 && ((esr & (1 << 24)) == 0)),
+	KASSERT((esr & ESR_ELx_IL) == ESR_ELx_IL ||
+	    (exception == EXCP_DATA_ABORT && ((esr & ISS_DATA_ISV) == 0)),
 	    ("Invalid instruction length in exception"));
 
 	if (0) {
@@ -227,11 +227,11 @@ do_el1h_sync(struct trapframe *frame)
 	}
 
 	switch(exception) {
-	case 0x25:
+	case EXCP_DATA_ABORT:
 		data_abort(frame, esr, 0);
 		break;
-	case 0x3c:
-		printf("Breakpoint %x\n", (uint32_t)(esr & 0xffffff));
+	case EXCP_BRK:
+		printf("Breakpoint %x\n", (uint32_t)(esr & ESR_ELx_ISS_MASK));
 		panic("breakpoint");
 		break;
 	default:
@@ -245,8 +245,8 @@ do_el0_sync(struct trapframe *frame)
 	uint32_t exception;
 	uint64_t esr;
 
-	__asm __volatile("mrs %x0, esr_el1" : "=&r"(esr));
-	exception = (esr >> 26) & 0x3f;
+	esr = READ_SPECIALREG(esr_el1);
+	exception = ESR_ELx_EXCEPTION(esr);
 
 	if (0)
 	{
@@ -257,11 +257,11 @@ do_el0_sync(struct trapframe *frame)
 	}
 
 	switch(exception) {
-	case 0x15:
+	case EXCP_SVC:
 		svc_handler(frame);
 		break;
-	case 0x20:
-	case 0x24:
+	case EXCP_INSN_ABORT_L:
+	case EXCP_DATA_ABORT_L:
 		data_abort(frame, esr, 1);
 		break;
 	default:

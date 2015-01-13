@@ -465,8 +465,8 @@ start_mmu:
 
 	.align 3
 mair:
-		/* Device       Normal, no cache   Normal, write-back */
-	.quad	MAIR(0x00, 0) | MAIR(0x44, 1)    | MAIR(0xff, 2)
+		/* Device            Normal, no cache     Normal, write-back */
+	.quad	MAIR_ATTR(0x00, 0) | MAIR_ATTR(0x44, 1) | MAIR_ATTR(0xff, 2)
 tcr:
 	.quad (TCR_TxSZ(64 - VIRT_BITS) | TCR_ASID_16 | TCR_TG1_4K)
 sctlr_set:

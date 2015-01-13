@@ -31,6 +31,8 @@
 
 #ifdef _KERNEL
 
+#include <machine/armreg.h>
+
 static __inline void
 breakpoint(void)
 {
@@ -56,7 +58,7 @@ static __inline void
 intr_restore(register_t s)
 {
 
-	__asm __volatile("msr daif, %x0" : : "r" (s));
+	WRITE_SPECIALREG(daif, s);
 }
 
 static __inline void
@@ -71,7 +73,7 @@ get_midr(void)
 {
 	uint64_t midr;
 
-	__asm __volatile("mrs %0, midr_el1" : "=&r" (midr));
+	midr = READ_SPECIALREG(midr_el1);
 
 	return (midr);
 }
@@ -81,7 +83,7 @@ get_mpidr(void)
 {
 	uint64_t mpidr;
 
-	__asm __volatile("mrs %0, mpidr_el1" : "=&r" (mpidr));
+	mpidr = READ_SPECIALREG(mpidr_el1);
 
 	return (mpidr);
 }
