@@ -25,8 +25,7 @@ CFLAGS+=	-DIN_GCC -DIN_LIBGCC2 -D__GCC_FLOAT_NOT_NEEDED \
 		-DHAVE_GTHR_DEFAULT \
 		-I${GCCLIB}/include \
 		-I${GCCDIR}/config -I${GCCDIR} -I. \
-		-I${.CURDIR}/../../usr.bin/cc/cc_tools \
-		-I${.CURDIR}
+		-I${.CURDIR}/../../usr.bin/cc/cc_tools
 
 LDFLAGS+=	-nodefaultlibs
 LIBADD+=	c
