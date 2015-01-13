@@ -1828,7 +1828,7 @@ pmap_qremove(vm_offset_t sva, int count)
 
 	va = sva;
 	while (count-- > 0) {
-		KASSERT(va >= VM_MIN_KERNEL_ADDRESS, ("usermode va %llx", va));
+		KASSERT(va >= VM_MIN_KERNEL_ADDRESS, ("usermode va %lx", va));
 		pmap_kremove(va);
 		va += PAGE_SIZE;
 	}
@@ -3895,7 +3895,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			mpte->wire_count--;
 			KASSERT(mpte->wire_count > 0,
 			    ("pmap_enter: missing reference to page table page,"
-			     " va: 0x%llx", va));
+			     " va: 0x%lx", va));
 		}
 
 		/*
