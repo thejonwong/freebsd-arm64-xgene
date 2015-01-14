@@ -145,11 +145,11 @@ gic_v3_fdt_attach(device_t dev)
 	/*
 	 * Recover number of the Re-Distributor regions.
 	 */
-	if (OF_getprop(ofw_bus_get_node(dev), "#redistributor-regions",
+	if (OF_getencprop(ofw_bus_get_node(dev), "#redistributor-regions",
 	    &redist_regions, sizeof(redist_regions)) <= 0)
 		sc->gic_redists.nregions = 1;
 	else
-		sc->gic_redists.nregions = fdt32_to_cpu(redist_regions);
+		sc->gic_redists.nregions = redist_regions;
 
 	err = gic_v3_attach(dev);
 	if (err)
