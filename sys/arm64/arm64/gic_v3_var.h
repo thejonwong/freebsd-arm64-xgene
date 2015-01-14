@@ -54,6 +54,14 @@ struct redist_pcpu {
 	vm_paddr_t		pa;
 };
 
+#define	LPI_CONFTAB_SIZE	PAGE_SIZE_64K
+/* 1 bit per LPI + 1 KB more for the obligatory PPI, SGI, SPI stuff */
+#define	LPI_PENDTAB_SIZE	((LPI_CONFTAB_SIZE / 8) + 0x400)
+
+struct redist_lpis {
+	vm_offset_t		conf_base;
+};
+
 struct gic_redists {
 	/* Re-Distributor regions */
 	struct redist_region *	regions;
@@ -61,6 +69,8 @@ struct gic_redists {
 	u_int			nregions;
 	/* Per-CPU Re-Distributor handler */
 	struct redist_pcpu	pcpu[MAXCPU];
+	/* LPIs data */
+	struct redist_lpis	lpis;
 };
 
 struct gic_v3_softc {
@@ -94,16 +104,44 @@ void gic_v3_unmask_irq(device_t, u_int);
 #define	GIC_V3_ITS_DEVSTR	"ARM GIC Interrupt Translation Service"
 #define	GIC_V3_ITS_COMPSTR	"arm,gic-v3-its"
 
+
+/* ITS commands description. Each command is 32 bytes long */
+struct its_cmd {
+	uint64_t its_cmd_desc[4];	/* ITS command descriptor */
+};
+
+/* ITS private table description */
+struct its_ptab {
+	vm_offset_t	ptab_vaddr;	/* Virtual Address of table */
+	size_t		ptab_pgsz;	/* Page size */
+	size_t		ptab_npages;	/* Number of pages */
+};
+
+/* ITS collection description. */
+struct its_col {
+	uint64_t	col_target;	/* Target Re-Distributor */
+	uint64_t	col_id;		/* Collection ID */
+};
+
+#define	ITS_CMDQ_SIZE		PAGE_SIZE_64K
+#define	ITS_CMDQ_NENTRIES	(ITS_CMDQ_SIZE / sizeof(struct its_cmd))
+
+#define	ITS_FLAGS_CMDQ_FLUSH	(1UL << 0)
+
 struct gic_v3_its_softc {
 	device_t		dev;
-	struct resource	*	gic_its_res;
+	struct resource	*	its_res;
 
-	bus_space_tag_t		gic_its_bst;
-	bus_space_handle_t	gic_its_bsh;
+	struct its_cmd *	its_cmdq;	/* ITS command queue */
+	struct its_ptab		its_ptabs[GITS_BASER_NUM];/* ITS private tables */
+	struct its_col *	its_cols;	/* Per-CPU collections */
+
+	uint64_t		its_flags;
 };
 
 extern devclass_t gic_v3_its_devclass;
 
 int gic_v3_its_attach(device_t);
+int gic_v3_its_detach(device_t);
 
 #endif /* _GIC_V3_VAR_H_ */
