@@ -34,12 +34,16 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/pcpu.h>
+#include <sys/sysctl.h>
 #include <sys/systm.h>
 
 #include <machine/cpu.h>
 #include <machine/cpufunc.h>
 
 char machine[] = "arm64";
+
+SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD, machine, 0,
+    "Machine class");
 
 /*
  * Per-CPU affinity as provided in MPIDR_EL1
