@@ -92,30 +92,39 @@ static gic_v3_initseq_t gic_v3_secondary_init[] __unused = {
 	NULL
 };
 
-/* GIC Distributor accessors */
-#define	gic_d_read(sc, len, reg) \
-		bus_space_read_##len(sc->gic_d_bst, sc->gic_d_bsh, reg)
-
-#define	gic_d_write(sc, len, reg, val) \
-		bus_space_write_##len(sc->gic_d_bst, sc->gic_d_bsh, reg, val)
-
-/* GIC Re-Distributor accessors (per-CPU) */
-#define	gic_r_read(sc, len, reg)				\
-({								\
-		u_int cpu = PCPU_GET(cpuid);			\
-								\
-		bus_space_read_##len(				\
-		    sc->gic_r_pcpu[cpu].r_pcpu_bst,		\
-		    sc->gic_r_pcpu[cpu].r_pcpu_bsh, reg);	\
+/*
+ * GIC Distributor accessors.
+ * Notice that only GIC sofc can be passed.
+ */
+#define	gic_d_read(sc, len, reg)		\
+({						\
+	bus_read_##len(sc->gic_dist, reg);	\
 })
 
-#define	gic_r_write(sc, len, reg, val)				\
-({								\
-		u_int cpu = PCPU_GET(cpuid);			\
-								\
-		bus_space_write_##len(				\
-		    sc->gic_r_pcpu[cpu].r_pcpu_bst,		\
-		    sc->gic_r_pcpu[cpu].r_pcpu_bsh, reg, val);	\
+#define	gic_d_write(sc, len, reg, val)		\
+({						\
+	bus_write_##len(sc->gic_dist, reg, val);\
+})
+
+/* GIC Re-Distributor accessors (per-CPU) */
+#define	gic_r_read(sc, len, reg)		\
+({						\
+	u_int cpu = PCPU_GET(cpuid);		\
+						\
+	bus_space_read_##len(			\
+	    sc->gic_redists.pcpu[cpu].bst,	\
+	    sc->gic_redists.pcpu[cpu].bsh,	\
+	    reg);				\
+})
+
+#define	gic_r_write(sc, len, reg, val)		\
+({						\
+	u_int cpu = PCPU_GET(cpuid);		\
+						\
+	bus_space_write_##len(			\
+	    sc->gic_redists.pcpu[cpu].bst,	\
+	    sc->gic_redists.pcpu[cpu].bsh,	\
+	    reg, val);				\
 })
 
 /*
@@ -142,7 +151,7 @@ gic_v3_attach(device_t dev)
 	 * One entry for Distributor and all remaining for Re-Distributor.
 	 */
 	sc->gic_res = malloc(
-	    sizeof(sc->gic_res) * (sc->gic_r_nregions + 1),
+	    sizeof(sc->gic_res) * (sc->gic_redists.nregions + 1),
 	    M_GIC_V3, M_NOWAIT);
 	if (sc->gic_res == NULL) {
 		device_printf(dev, "Cannot allocate memory\n");
@@ -150,7 +159,7 @@ gic_v3_attach(device_t dev)
 		goto error;
 	}
 	/* Now allocate corresponding resources */
-	for (i = 0, rid = 0; i < (sc->gic_r_nregions + 1); i++, rid++) {
+	for (i = 0, rid = 0; i < (sc->gic_redists.nregions + 1); i++, rid++) {
 		sc->gic_res[rid] = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
 		    &rid, RF_ACTIVE);
 		if (sc->gic_res[rid] == NULL) {
@@ -162,26 +171,25 @@ gic_v3_attach(device_t dev)
 	/*
 	 * Distributor interface
 	 */
-	sc->gic_d_bst = rman_get_bustag(sc->gic_res[0]);
-	sc->gic_d_bsh = rman_get_bushandle(sc->gic_res[0]);
+	sc->gic_dist = sc->gic_res[0];
 
 	/*
 	 * Re-Dristributor interface
 	 */
 	/* Allocate space under region descriptions */
-	sc->gic_r_regions = malloc(
-	    sizeof(*sc->gic_r_regions) * sc->gic_r_nregions,
+	sc->gic_redists.regions = malloc(
+	    sizeof(*sc->gic_redists.regions) * sc->gic_redists.nregions,
 	    M_GIC_V3, M_NOWAIT);
-	if (sc->gic_r_regions == NULL) {
+	if (sc->gic_redists.regions == NULL) {
 		device_printf(dev, "Cannot allocate memory\n");
 		err = ENOMEM;
 		goto error;
 	}
 	/* Fill-up bus_space information for each region. */
-	for (i = 0, rid = 1; i < sc->gic_r_nregions; i++, rid++) {
-		sc->gic_r_regions[i].r_bst =
+	for (i = 0, rid = 1; i < sc->gic_redists.nregions; i++, rid++) {
+		sc->gic_redists.regions[i].bst =
 		    rman_get_bustag(sc->gic_res[rid]);
-		sc->gic_r_regions[i].r_bsh =
+		sc->gic_redists.regions[i].bsh =
 		    rman_get_bushandle(sc->gic_res[rid]);
 	}
 
@@ -221,11 +229,11 @@ gic_v3_detach(device_t dev)
 		 * XXX: We should probably deregister PIC
 		 */
 	}
-	for (i = 0, rid = 0; i < (sc->gic_r_nregions + 1); i++, rid++)
+	for (i = 0, rid = 0; i < (sc->gic_redists.nregions + 1); i++, rid++)
 		bus_release_resource(dev, SYS_RES_MEMORY, rid, sc->gic_res[rid]);
 
 	free(sc->gic_res, M_GIC_V3);
-	free(sc->gic_r_regions, M_GIC_V3);
+	free(sc->gic_redists.regions, M_GIC_V3);
 
 	return (0);
 }
@@ -326,12 +334,12 @@ gic_v3_wait_for_rwp(struct gic_v3_softc *sc, enum gic_v3_xdist xdist)
 
 	switch (xdist) {
 	case (DIST):
-		bst = sc->gic_d_bst;
-		bsh = sc->gic_d_bsh;
+		bst = rman_get_bustag(sc->gic_dist);
+		bsh = rman_get_bushandle(sc->gic_dist);
 		break;
 	case (REDIST):
-		bst = sc->gic_r_pcpu[cpuid].r_pcpu_bst;
-		bsh = sc->gic_r_pcpu[cpuid].r_pcpu_bsh;
+		bst = sc->gic_redists.pcpu[cpuid].bst;
+		bsh = sc->gic_redists.pcpu[cpuid].bsh;
 		break;
 	default:
 		KASSERT(0, ("%s: Attempt to wait for unknown RWP", __func__));
@@ -490,9 +498,9 @@ gic_v3_redist_find(struct gic_v3_softc *sc)
 		    "Start searching for Re-Distributor\n");
 	}
 	/* Iterate through Re-Distributor regions */
-	for (i = 0; i < sc->gic_r_nregions; i++) {
-		r_bst = sc->gic_r_regions[i].r_bst;
-		r_bsh = sc->gic_r_regions[i].r_bsh;
+	for (i = 0; i < sc->gic_redists.nregions; i++) {
+		r_bst = sc->gic_redists.regions[i].bst;
+		r_bsh = sc->gic_redists.regions[i].bsh;
 
 		pidr2 = bus_space_read_4(r_bst, r_bsh, GICR_PIDR2);
 		switch (pidr2 & GICR_PIDR2_ARCH_MASK) {
@@ -508,9 +516,9 @@ gic_v3_redist_find(struct gic_v3_softc *sc)
 		do {
 			typer = bus_space_read_8(r_bst, r_bsh, GICR_TYPER);
 			if ((typer >> 32) == aff) {
-				sc->gic_r_pcpu[cpuid].r_pcpu_bsh = r_bsh;
-				sc->gic_r_pcpu[cpuid].r_pcpu_bst = r_bst;
-				sc->gic_r_pcpu[cpuid].r_pcpu_pa =
+				sc->gic_redists.pcpu[cpuid].bsh = r_bsh;
+				sc->gic_redists.pcpu[cpuid].bst = r_bst;
+				sc->gic_redists.pcpu[cpuid].pa =
 				    vtophys(r_bsh);
 				if (bootverbose) {
 					device_printf(sc->dev,

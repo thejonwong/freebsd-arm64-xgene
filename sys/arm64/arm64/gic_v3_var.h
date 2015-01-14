@@ -38,8 +38,8 @@
  * on the #redistributor-regions property in FDT.
  */
 struct redist_region {
-	bus_space_tag_t		r_bst;
-	bus_space_handle_t	r_bsh;
+	bus_space_tag_t		bst;
+	bus_space_handle_t	bsh;
 };
 /*
  * Per-CPU Re-Distributor description.
@@ -49,9 +49,18 @@ struct redist_region {
  * when using redist_pcpu structure.
  */
 struct redist_pcpu {
-	bus_space_tag_t		r_pcpu_bst;
-	bus_space_handle_t	r_pcpu_bsh;
-	vm_paddr_t		r_pcpu_pa;
+	bus_space_tag_t		bst;
+	bus_space_handle_t	bsh;
+	vm_paddr_t		pa;
+};
+
+struct gic_redists {
+	/* Re-Distributor regions */
+	struct redist_region *	regions;
+	/* Number of Re-Distributor regions */
+	u_int			nregions;
+	/* Per-CPU Re-Distributor handler */
+	struct redist_pcpu	pcpu[MAXCPU];
 };
 
 struct gic_v3_softc {
@@ -59,15 +68,9 @@ struct gic_v3_softc {
 	struct resource	**	gic_res;
 	struct mtx		gic_mtx;
 	/* Distributor */
-	bus_space_tag_t		gic_d_bst;
-	bus_space_handle_t	gic_d_bsh;
-	/* Re-Distributor regions */
-	struct redist_region *	gic_r_regions;
-	/* Number of Re-Distributor regions */
-	u_int			gic_r_nregions;
-
-	/* Per-CPU Re-Distributor handler */
-	struct redist_pcpu	gic_r_pcpu[MAXCPU];
+	struct resource *	gic_dist;
+	/* Re-Distributors */
+	struct gic_redists	gic_redists;
 
 	u_int			gic_nirqs;
 };
