@@ -216,7 +216,7 @@ do_el1h_sync(struct trapframe *frame)
 	 * bit (bit 24) is also set.
 	 */
 	KASSERT((esr & (1 << 25)) != 0 ||
-	    (exception == 0x25 && ((esr & (1 << 24)) == 1)),
+	    (exception == 0x25 && ((esr & (1 << 24)) == 0)),
 	    ("Invalid instruction length in exception"));
 
 	if (0) {
