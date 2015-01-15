@@ -10,6 +10,9 @@ INTERNALLIB=
 SRCS=		efi_fdt.c
 
 CFLAGS+=	-ffreestanding -msoft-float
+.if ${MACHINE_CPUARCH} == "arm64"
+CFLAGS+=	-mgeneral-regs-only
+.endif
 
 CFLAGS+=	-I${.CURDIR}/../../../../lib/libstand/
 

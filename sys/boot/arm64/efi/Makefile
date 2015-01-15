@@ -14,7 +14,7 @@ INTERNALPROG=
 SRCS=	start.S main.c conf.c vers.c reloc.c autoload.c
 SRCS+=	copy.c devicename.c exec.c bootinfo.c cache.c
 
-CFLAGS+=	-fno-builtin
+CFLAGS+=	-fno-builtin -mgeneral-regs-only
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/../../efi/include
 CFLAGS+=	-I${.CURDIR}/../../efi/include/arm64

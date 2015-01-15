@@ -40,7 +40,7 @@ CFLAGS+=	-msoft-float -D_STANDALONE -DNETIF_DEBUG
 CFLAGS+=	-msoft-float -D_STANDALONE
 .endif
 .if ${MACHINE_CPUARCH} == "arm64"
-CFLAGS+=	-D_STANDALONE
+CFLAGS+=	-D_STANDALONE -mgeneral-regs-only
 .endif
 .if ${MACHINE_CPUARCH} == "mips"
 CFLAGS+=	-G0 -fno-pic -mno-abicalls

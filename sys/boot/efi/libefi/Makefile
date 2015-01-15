@@ -11,6 +11,9 @@ SRCS+= nullconsole.c comconsole.c
 .if ${MACHINE_ARCH} == "amd64"
 CFLAGS+= -fPIC
 .endif
+.if ${MACHINE_CPUARCH} == "arm64"
+CFLAGS+=	-mgeneral-regs-only
+.endif
 CFLAGS+= -I${.CURDIR}/../include
 CFLAGS+= -I${.CURDIR}/../include/${MACHINE_CPUARCH}
 CFLAGS+= -I${.CURDIR}/../../../../lib/libstand
