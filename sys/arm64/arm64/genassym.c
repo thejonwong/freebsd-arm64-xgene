@@ -48,6 +48,7 @@ ASSYM(PC_CURTHREAD, offsetof(struct pcpu, pc_curthread));
 ASSYM(PCB_REGS, offsetof(struct pcb, pcb_x));
 ASSYM(PCB_SP, offsetof(struct pcb, pcb_sp));
 ASSYM(PCB_L1ADDR, offsetof(struct pcb, pcb_l1addr));
+ASSYM(PCB_ONFAULT, offsetof(struct pcb, pcb_onfault));
 
 ASSYM(SF_UC, offsetof(struct sigframe, sf_uc));
 

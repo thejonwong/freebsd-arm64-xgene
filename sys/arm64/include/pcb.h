@@ -41,6 +41,9 @@ struct pcb {
 	uint64_t	pcb_tpidr_el0;
 	vm_offset_t	pcb_l1addr;
 
+	/* Fault handler, the error value is passed in x0 */
+	vm_offset_t	pcb_onfault;
+
 	/* Place last to simplify the asm to access the rest if the struct */
 	__uint128_t	pcb_vfp[32];
 	uint32_t	pcb_fpcr;

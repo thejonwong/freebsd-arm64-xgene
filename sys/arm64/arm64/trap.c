@@ -46,6 +46,7 @@ __FBSDID("$FreeBSD$");
 #include <vm/vm_extern.h>
 
 #include <machine/frame.h>
+#include <machine/pcb.h>
 
 #ifdef VFP
 #include <machine/vfp.h>
@@ -125,6 +126,7 @@ data_abort(struct trapframe *frame, uint64_t esr, int lower)
 	struct vm_map *map;
 	struct thread *td;
 	struct proc *p;
+	struct pcb *pcb;
 	vm_prot_t ftype;
 	vm_offset_t va;
 	uint64_t far;
@@ -134,6 +136,7 @@ data_abort(struct trapframe *frame, uint64_t esr, int lower)
 
 	td = curthread;
 	p = td->td_proc;
+	pcb = td->td_pcb;
 
 	if (lower)
 		map = &td->td_proc->p_vmspace->vm_map;
@@ -178,8 +181,15 @@ data_abort(struct trapframe *frame, uint64_t esr, int lower)
 			else
 				sig = SIGSEGV;
 			call_trapsignal(td, sig, 0);
-		} else
+		} else {
+			if (td->td_intr_nesting_level == 0 &&
+			    pcb->pcb_onfault != 0) {
+				frame->tf_x[0] = error;
+				frame->tf_elr = pcb->pcb_onfault;
+				return;
+			}
 			panic("vm_fault failed: %lx", frame->tf_elr);
+		}
 	}
 
 	if (lower)
