@@ -362,13 +362,15 @@ SUBDIR+=	c89
 SUBDIR+=	c99
 SUBDIR+=	ctags
 SUBDIR+=	file2c
-SUBDIR+=	gprof
+# ARM64TODO: Port gprof
+#SUBDIR+=	gprof
 SUBDIR+=	indent
 SUBDIR+=	lex
 SUBDIR+=	mkstr
 SUBDIR+=	rpcgen
 SUBDIR+=	unifdef
-SUBDIR+=	xlint
+# ARM64TOOD: Get lint building
+#SUBDIR+=	xlint
 SUBDIR+=	xstr
 SUBDIR+=	yacc
 .endif
