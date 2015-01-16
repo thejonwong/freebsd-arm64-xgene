@@ -4659,25 +4659,19 @@ void
 pmap_copy_pages(vm_page_t ma[], vm_offset_t a_offset, vm_page_t mb[],
     vm_offset_t b_offset, int xfersize)
 {
-	panic("pmap_copy_pages");
-#if 0
 	void *a_cp, *b_cp;
 	vm_page_t m_a, m_b;
 	vm_paddr_t p_a, p_b;
+#if 0
 	pt_entry_t *pte;
+#endif
 	vm_offset_t a_pg_offset, b_pg_offset;
 	int cnt;
+#if 0
 	boolean_t pinned;
 
-	/*
-	 * NB:  The sequence of updating a page table followed by accesses
-	 * to the corresponding pages used in the !DMAP case is subject to
-	 * the situation described in the "AMD64 Architecture Programmer's
-	 * Manual Volume 2: System Programming" rev. 3.23, "7.3.1 Special
-	 * Coherency Considerations".  Therefore, issuing the INVLPG right
-	 * after modifying the PTE bits is crucial.
-	 */
 	pinned = FALSE;
+#endif
 	while (xfersize > 0) {
 		a_pg_offset = a_offset & PAGE_MASK;
 		m_a = ma[a_offset >> PAGE_SHIFT];
@@ -4687,8 +4681,9 @@ pmap_copy_pages(vm_page_t ma[], vm_offset_t a_offset, vm_page_t mb[],
 		p_b = m_b->phys_addr;
 		cnt = min(xfersize, PAGE_SIZE - a_pg_offset);
 		cnt = min(cnt, PAGE_SIZE - b_pg_offset);
-		if (__predict_false(p_a < DMAP_MIN_ADDRESS ||
-		    p_a > DMAP_MIN_ADDRESS + dmaplimit)) {
+		if (__predict_false(!PHYS_IN_DMAP(p_a))) {
+			panic("!DMAP a %lx", p_a);
+#if 0
 			mtx_lock(&cpage_lock);
 			sched_pin();
 			pinned = TRUE;
@@ -4697,11 +4692,13 @@ pmap_copy_pages(vm_page_t ma[], vm_offset_t a_offset, vm_page_t mb[],
 			    pmap_cache_bits(kernel_pmap, m_a->md.pat_mode, 0);
 			invlpg(cpage_a);
 			a_cp = (char *)cpage_a + a_pg_offset;
+#endif
 		} else {
 			a_cp = (char *)PHYS_TO_DMAP(p_a) + a_pg_offset;
 		}
-		if (__predict_false(p_b < DMAP_MIN_ADDRESS ||
-		    p_b > DMAP_MIN_ADDRESS + dmaplimit)) {
+		if (__predict_false(!PHYS_IN_DMAP(p_b))) {
+			panic("!DMAP b %lx", p_b);
+#if 0
 			if (!pinned) {
 				mtx_lock(&cpage_lock);
 				sched_pin();
@@ -4713,20 +4710,22 @@ pmap_copy_pages(vm_page_t ma[], vm_offset_t a_offset, vm_page_t mb[],
 			    m_b->md.pat_mode, 0);
 			invlpg(cpage_b);
 			b_cp = (char *)cpage_b + b_pg_offset;
+#endif
 		} else {
 			b_cp = (char *)PHYS_TO_DMAP(p_b) + b_pg_offset;
 		}
 		bcopy(a_cp, b_cp, cnt);
+#if 0
 		if (__predict_false(pinned)) {
 			sched_unpin();
 			mtx_unlock(&cpage_lock);
 			pinned = FALSE;
 		}
+#endif
 		a_offset += cnt;
 		b_offset += cnt;
 		xfersize -= cnt;
 	}
-#endif
 }
 
 /*

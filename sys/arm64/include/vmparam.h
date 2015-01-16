@@ -174,9 +174,12 @@
 #define	DMAP_MIN_PHYSADDR	(0x0000000000000000UL)
 #define	DMAP_MAX_PHYSADDR	(DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS)
 
+/* True if pa is in the dmap range */
+#define	PHYS_IN_DMAP(pa)	((pa) <= DMAP_MAX_PHYSADDR)
+
 #define	PHYS_TO_DMAP(pa)						\
 ({									\
-	KASSERT(((pa) <= DMAP_MAX_PHYSADDR),				\
+	KASSERT(PHYS_IN_DMAP(pa),					\
 	    ("%s: PA out of range, PA: 0x%lx", __func__,		\
 	    (vm_paddr_t)(pa)));						\
 	(pa) | DMAP_MIN_ADDRESS;					\
