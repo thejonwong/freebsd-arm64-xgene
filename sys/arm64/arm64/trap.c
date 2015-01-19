@@ -77,7 +77,8 @@ cpu_fetch_syscall_args(struct thread *td, struct syscall_args *sa)
 	sa->code = td->td_frame->tf_x[8];
 
 	if (sa->code == SYS_syscall || sa->code == SYS___syscall) {
-		panic("TODO: syscall/__syscall");
+		sa->code = *ap++;
+		nap--;
 	}
 
 	if (p->p_sysent->sv_mask)
