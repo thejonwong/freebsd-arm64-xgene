@@ -152,12 +152,8 @@ gic_v3_attach(device_t dev)
 	 */
 	sc->gic_res = malloc(
 	    sizeof(sc->gic_res) * (sc->gic_redists.nregions + 1),
-	    M_GIC_V3, M_NOWAIT);
-	if (sc->gic_res == NULL) {
-		device_printf(dev, "Cannot allocate memory\n");
-		err = ENOMEM;
-		goto error;
-	}
+	    M_GIC_V3, M_WAITOK);
+
 	/* Now allocate corresponding resources */
 	for (i = 0, rid = 0; i < (sc->gic_redists.nregions + 1); i++, rid++) {
 		sc->gic_res[rid] = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
@@ -179,12 +175,8 @@ gic_v3_attach(device_t dev)
 	/* Allocate space under region descriptions */
 	sc->gic_redists.regions = malloc(
 	    sizeof(*sc->gic_redists.regions) * sc->gic_redists.nregions,
-	    M_GIC_V3, M_NOWAIT);
-	if (sc->gic_redists.regions == NULL) {
-		device_printf(dev, "Cannot allocate memory\n");
-		err = ENOMEM;
-		goto error;
-	}
+	    M_GIC_V3, M_WAITOK);
+
 	/* Fill-up bus_space information for each region. */
 	for (i = 0, rid = 1; i < sc->gic_redists.nregions; i++, rid++) {
 		sc->gic_redists.regions[i].bst =
