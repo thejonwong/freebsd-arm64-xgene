@@ -84,7 +84,7 @@ _start:
 
 virtdone:
 	/* Set up the stack */
-	adr	x25, initstack
+	adr	x25, initstack_end
 	mov	sp, x25
 
 	/* Zero the BSS */
@@ -498,8 +498,10 @@ pagetable:
 init_pt_va:
 	.quad pagetable		/* XXX: Keep page tables VA */
 
+	.align	4
 initstack:
 	.space	(PAGE_SIZE * KSTACK_PAGES)
+initstack_end:
 
 
 ENTRY(sigcode)
