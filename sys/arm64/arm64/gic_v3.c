@@ -111,9 +111,8 @@ static gic_v3_initseq_t gic_v3_secondary_init[] __unused = {
 ({						\
 	u_int cpu = PCPU_GET(cpuid);		\
 						\
-	bus_space_read_##len(			\
-	    sc->gic_redists.pcpu[cpu].bst,	\
-	    sc->gic_redists.pcpu[cpu].bsh,	\
+	bus_read_##len(				\
+	    sc->gic_redists.pcpu[cpu],		\
 	    reg);				\
 })
 
@@ -121,9 +120,8 @@ static gic_v3_initseq_t gic_v3_secondary_init[] __unused = {
 ({						\
 	u_int cpu = PCPU_GET(cpuid);		\
 						\
-	bus_space_write_##len(			\
-	    sc->gic_redists.pcpu[cpu].bst,	\
-	    sc->gic_redists.pcpu[cpu].bsh,	\
+	bus_write_##len(			\
+	    sc->gic_redists.pcpu[cpu],		\
 	    reg, val);				\
 })
 
@@ -178,12 +176,8 @@ gic_v3_attach(device_t dev)
 	    M_GIC_V3, M_WAITOK);
 
 	/* Fill-up bus_space information for each region. */
-	for (i = 0, rid = 1; i < sc->gic_redists.nregions; i++, rid++) {
-		sc->gic_redists.regions[i].bst =
-		    rman_get_bustag(sc->gic_res[rid]);
-		sc->gic_redists.regions[i].bsh =
-		    rman_get_bushandle(sc->gic_res[rid]);
-	}
+	for (i = 0, rid = 1; i < sc->gic_redists.nregions; i++, rid++)
+		sc->gic_redists.regions[i] = sc->gic_res[rid];
 
 	/* Get the number of supported interrupts */
 	sc->gic_nirqs = gic_d_read(sc, 4, GICD_TYPER) & 0x1F;
@@ -223,6 +217,9 @@ gic_v3_detach(device_t dev)
 	}
 	for (i = 0, rid = 0; i < (sc->gic_redists.nregions + 1); i++, rid++)
 		bus_release_resource(dev, SYS_RES_MEMORY, rid, sc->gic_res[rid]);
+
+	for (i = 0; i < MAXCPU; i++)
+		free(sc->gic_redists.pcpu[i], M_GIC_V3);
 
 	free(sc->gic_res, M_GIC_V3);
 	free(sc->gic_redists.regions, M_GIC_V3);
@@ -317,8 +314,7 @@ gic_v3_unmask_irq(device_t dev, u_int irq)
 static void
 gic_v3_wait_for_rwp(struct gic_v3_softc *sc, enum gic_v3_xdist xdist)
 {
-	bus_space_tag_t	bst;
-	bus_space_handle_t bsh;
+	struct resource *res;
 	u_int cpuid;
 	size_t us_left = 1000000;
 
@@ -326,19 +322,17 @@ gic_v3_wait_for_rwp(struct gic_v3_softc *sc, enum gic_v3_xdist xdist)
 
 	switch (xdist) {
 	case (DIST):
-		bst = rman_get_bustag(sc->gic_dist);
-		bsh = rman_get_bushandle(sc->gic_dist);
+		res = sc->gic_dist;
 		break;
 	case (REDIST):
-		bst = sc->gic_redists.pcpu[cpuid].bst;
-		bsh = sc->gic_redists.pcpu[cpuid].bsh;
+		res = sc->gic_redists.pcpu[cpuid];
 		break;
 	default:
 		KASSERT(0, ("%s: Attempt to wait for unknown RWP", __func__));
 		return;
 	}
 
-	while ((bus_space_read_4(bst, bsh, GICD_CTLR) & GICD_CTLR_RWP) != 0) {
+	while ((bus_read_4(res, GICD_CTLR) & GICD_CTLR_RWP) != 0) {
 		DELAY(1);
 		if (us_left-- == 0) {
 			device_printf(sc->dev,
@@ -470,7 +464,7 @@ gic_v3_dist_init(struct gic_v3_softc *sc)
 static int
 gic_v3_redist_find(struct gic_v3_softc *sc)
 {
-	bus_space_tag_t r_bst;
+	struct resource r_res;
 	bus_space_handle_t r_bsh;
 	uint64_t aff;
 	uint64_t typer;
@@ -479,6 +473,18 @@ gic_v3_redist_find(struct gic_v3_softc *sc)
 	size_t i;
 
 	cpuid = PCPU_GET(cpuid);
+
+	/* Allocate struct resource for this CPU's Re-Distributor registers */
+	sc->gic_redists.pcpu[cpuid] =
+	    malloc(sizeof(*sc->gic_redists.pcpu), M_GIC_V3, M_WAITOK);
+	if (sc->gic_redists.pcpu[cpuid] == NULL) {
+		if (bootverbose) {
+			device_printf(sc->dev,
+			    "Could not allocate memory for CPU%u "
+			    "Re-Distributor resource description\n", cpuid);
+		}
+		return (ENOMEM);
+	}
 
 	aff = CPU_AFFINITY(cpuid);
 	/* Affinity in format for comparison with typer */
@@ -491,10 +497,11 @@ gic_v3_redist_find(struct gic_v3_softc *sc)
 	}
 	/* Iterate through Re-Distributor regions */
 	for (i = 0; i < sc->gic_redists.nregions; i++) {
-		r_bst = sc->gic_redists.regions[i].bst;
-		r_bsh = sc->gic_redists.regions[i].bsh;
+		/* Take a copy of the region's resource */
+		r_res = *sc->gic_redists.regions[i];
+		r_bsh = rman_get_bushandle(&r_res);
 
-		pidr2 = bus_space_read_4(r_bst, r_bsh, GICR_PIDR2);
+		pidr2 = bus_read_4(&r_res, GICR_PIDR2);
 		switch (pidr2 & GICR_PIDR2_ARCH_MASK) {
 		case GICR_PIDR2_ARCH_GICv3: /* fall through */
 		case GICR_PIDR2_ARCH_GICv4:
@@ -502,16 +509,17 @@ gic_v3_redist_find(struct gic_v3_softc *sc)
 		default:
 			device_printf(sc->dev,
 			    "No Re-Distributor found for CPU%u\n", cpuid);
+			free(sc->gic_redists.pcpu[cpuid], M_GIC_V3);
 			return (ENODEV);
 		}
 
 		do {
-			typer = bus_space_read_8(r_bst, r_bsh, GICR_TYPER);
+			typer = bus_read_8(&r_res, GICR_TYPER);
 			if ((typer >> 32) == aff) {
-				sc->gic_redists.pcpu[cpuid].bsh = r_bsh;
-				sc->gic_redists.pcpu[cpuid].bst = r_bst;
-				sc->gic_redists.pcpu[cpuid].pa =
-				    vtophys(r_bsh);
+				KASSERT(sc->gic_redists.pcpu[cpuid] != NULL,
+				    ("Invalid pointer to per-CPU redistributor"));
+				/* Copy res contents to its final destination */
+				*sc->gic_redists.pcpu[cpuid] = r_res;
 				if (bootverbose) {
 					device_printf(sc->dev,
 					    "CPU%u Re-Distributor has been found\n",
@@ -524,9 +532,11 @@ gic_v3_redist_find(struct gic_v3_softc *sc)
 			if (typer & GICR_TYPER_VLPIS)
 				r_bsh += PAGE_SIZE_64K * 2;
 
+			rman_set_bushandle(&r_res, r_bsh);
 		} while (!(typer & GICR_TYPER_LAST));
 	}
 
+	free(sc->gic_redists.pcpu[cpuid], M_GIC_V3);
 	device_printf(sc->dev, "No Re-Distributor found for CPU%u\n", cpuid);
 	return (ENXIO);
 }

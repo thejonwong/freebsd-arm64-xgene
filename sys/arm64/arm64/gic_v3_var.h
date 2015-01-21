@@ -32,28 +32,6 @@
 
 #define	GIC_V3_DEVSTR	"ARM Generic Interrupt Controller v3.0"
 
-/*
- * Re-Distributor region description.
- * We will have few of those depending
- * on the #redistributor-regions property in FDT.
- */
-struct redist_region {
-	bus_space_tag_t		bst;
-	bus_space_handle_t	bsh;
-};
-/*
- * Per-CPU Re-Distributor description.
- * Includes redundant busdma tag (which is the
- * same as corresponding redist_region tag).
- * This will help to simplify access to the tag
- * when using redist_pcpu structure.
- */
-struct redist_pcpu {
-	bus_space_tag_t		bst;
-	bus_space_handle_t	bsh;
-	vm_paddr_t		pa;
-};
-
 #define	LPI_CONFTAB_SIZE	PAGE_SIZE_64K
 /* 1 bit per LPI + 1 KB more for the obligatory PPI, SGI, SPI stuff */
 #define	LPI_PENDTAB_SIZE	((LPI_CONFTAB_SIZE / 8) + 0x400)
@@ -63,12 +41,16 @@ struct redist_lpis {
 };
 
 struct gic_redists {
-	/* Re-Distributor regions */
-	struct redist_region *	regions;
+	/*
+	 * Re-Distributor region description.
+	 * We will have few of those depending
+	 * on the #redistributor-regions property in FDT.
+	 */
+	struct resource **	regions;
 	/* Number of Re-Distributor regions */
 	u_int			nregions;
 	/* Per-CPU Re-Distributor handler */
-	struct redist_pcpu	pcpu[MAXCPU];
+	struct resource	*	pcpu[MAXCPU];
 	/* LPIs data */
 	struct redist_lpis	lpis;
 };
