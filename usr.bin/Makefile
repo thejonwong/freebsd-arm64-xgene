@@ -272,7 +272,10 @@ _mkesdb=	mkesdb
 
 .if ${MK_KDUMP} != "no"
 SUBDIR+=        kdump
+# ARM64TODO: Port to arm64
+.if ${MACHINE_CPUARCH} != "arm64"
 SUBDIR+=        truss
+.endif
 .endif
 
 .if ${MK_KERBEROS_SUPPORT} != "no"
