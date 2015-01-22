@@ -374,8 +374,9 @@ SUBDIR+=	c89
 SUBDIR+=	c99
 SUBDIR+=	ctags
 SUBDIR+=	file2c
-# ARM64TODO: Port gprof
-#SUBDIR+=	gprof
+.if ${TARGET_ARCH} != "arm64" # ARM64TODO gprof does not build
+SUBDIR+=	gprof
+.endif
 SUBDIR+=	indent
 SUBDIR+=	lex
 SUBDIR+=	mkstr
