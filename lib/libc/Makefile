@@ -150,11 +150,11 @@ KSRCS=	bcmp.c ffs.c ffsl.c fls.c flsl.c mcount.c strcat.c strchr.c \
 libkern: libkern.gen libkern.${LIBC_ARCH}
 
 libkern.gen: ${KQSRCS} ${KSRCS}
-	cp -fp ${LIBC_SRCTOP}/quad/quad.h ${.ALLSRC} ${DESTDIR}/sys/libkern
+	${CP} ${LIBC_SRCTOP}/quad/quad.h ${.ALLSRC} ${DESTDIR}/sys/libkern
 
 libkern.${LIBC_ARCH}:: ${KMSRCS}
 .if defined(KMSRCS) && !empty(KMSRCS)
-	cp -fp ${.ALLSRC} ${DESTDIR}/sys/libkern/${LIBC_ARCH}
+	${CP} ${.ALLSRC} ${DESTDIR}/sys/libkern/${LIBC_ARCH}
 .endif
 
 .if ${MK_SYSCALL_COMPAT} != "no"
