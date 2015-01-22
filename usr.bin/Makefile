@@ -382,8 +382,9 @@ SUBDIR+=	lex
 SUBDIR+=	mkstr
 SUBDIR+=	rpcgen
 SUBDIR+=	unifdef
-# ARM64TOOD: Get lint building
-#SUBDIR+=	xlint
+.if ${TARGET_ARCH} != "arm64" # ARM64TODO xlint does not build
+SUBDIR+=	xlint
+.endif
 SUBDIR+=	xstr
 SUBDIR+=	yacc
 .endif
