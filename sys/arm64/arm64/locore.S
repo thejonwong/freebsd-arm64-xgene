@@ -257,12 +257,10 @@ create_pagetables:
 	/* Save the Link register */
 	mov	x5, x30
 
-	mov	x15, #(PAGE_SIZE * 3)
-
 	/* Clean the page table */
 	adr	x6, pagetable
 	mov	x26, x6
-	add	x27, x6, x15
+	adr	x27, pagetable_end
 1:
 	stp	xzr, xzr, [x6], #16
 	stp	xzr, xzr, [x6], #16
@@ -293,7 +291,7 @@ create_pagetables:
 	bl	build_block_pagetable
 
 	/* Move to the l1 table */
-	add	x26, x26, #1, lsl #PAGE_SHIFT
+	add	x26, x26, #PAGE_SIZE
 
 	/* Link the l1 -> l2 table */
 	mov	x9, x6
@@ -304,7 +302,7 @@ create_pagetables:
 	/*
 	 * Build the TTBR0 maps.
 	 */
-	add	x27, x26, #1, lsl #PAGE_SHIFT
+	add	x27, x26, #PAGE_SIZE
 
 	/* Create the VA = PA map */
 	mov	x6, x27		/* The initial page table */
@@ -492,7 +490,12 @@ abort:
 	 *           L1 for user   (Low addresses)
 	 */
 pagetable:
-	.space	(PAGE_SIZE * 3)
+	.space	PAGE_SIZE
+pagetable_l1_ttbr1:
+	.space	PAGE_SIZE
+pagetable_l1_ttbr0:
+	.space	PAGE_SIZE
+pagetable_end:
 
 	.globl init_pt_va
 init_pt_va:
