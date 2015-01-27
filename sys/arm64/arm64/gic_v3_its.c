@@ -220,12 +220,12 @@ its_alloc_tables(struct gic_v3_its_softc *sc)
 
 	/* Read features first */
 	gits_typer = gic_its_read(sc, 4, GITS_TYPER);
-	/* Save the ITT Entry size */
-	esize = GITS_TYPER_ITTES(gits_typer);
 
 	for (tn = 0; tn < GITS_BASER_NUM; tn++) {
 		gits_baser = gic_its_read(sc, 8, GITS_BASER(tn));
 		type = GITS_BASER_TYPE(gits_baser);
+		/* Get the Table Entry size */
+		esize = GITS_BASER_ESIZE(gits_baser);
 
 		switch (type) {
 		case GITS_BASER_TYPE_UNIMPL:	/* fall through */
