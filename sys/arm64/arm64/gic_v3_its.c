@@ -181,7 +181,8 @@ gic_v3_its_detach(device_t dev)
 	/* Release what's possible */
 
 	/* Command queue */
-	contigfree((void *)sc->its_cmdq, ITS_CMDQ_SIZE, M_GIC_V3_ITS);
+	if ((void *)sc->its_cmdq != NULL)
+		contigfree((void *)sc->its_cmdq, ITS_CMDQ_SIZE, M_GIC_V3_ITS);
 	/* ITTs */
 	its_free_tables(sc);
 	/* Collections */
@@ -189,8 +190,10 @@ gic_v3_its_detach(device_t dev)
 	/* LPI config table */
 	parent = device_get_parent(sc->dev);
 	gic_sc = device_get_softc(parent);
-	contigfree((void *)gic_sc->gic_redists.lpis.conf_base,
-	    LPI_CONFTAB_SIZE, M_GIC_V3_ITS);
+	if ((void *)gic_sc->gic_redists.lpis.conf_base != NULL) {
+		contigfree((void *)gic_sc->gic_redists.lpis.conf_base,
+		    LPI_CONFTAB_SIZE, M_GIC_V3_ITS);
+	}
 
 	/* Resource... */
 	bus_release_resource(dev, SYS_RES_MEMORY, rid, sc->its_res);
@@ -342,7 +345,8 @@ its_free_tables(struct gic_v3_its_softc *sc)
 		size = sc->its_ptabs[tn].ptab_pgsz;
 		size *= sc->its_ptabs[tn].ptab_npages;
 
-		contigfree((void *)ptab_vaddr, size, M_GIC_V3_ITS);
+		if ((void *)ptab_vaddr != NULL)
+			contigfree((void *)ptab_vaddr, size, M_GIC_V3_ITS);
 
 		/* Clear the table description */
 		memset(&sc->its_ptabs[tn], 0,
