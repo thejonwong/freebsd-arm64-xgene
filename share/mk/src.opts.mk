@@ -52,14 +52,18 @@ __DEFAULT_YES_OPTIONS = \
     ATM \
     AUDIT \
     AUTHPF \
+    AUTOFS \
+    BHYVE \
     BLUETOOTH \
     BOOT \
     BSD_CPIO \
+    BSDINSTALL \
     BSNMP \
     BZIP2 \
     CALENDAR \
     CAPSICUM \
     CASPER \
+    CCD \
     CDDL \
     CPP \
     CROSS_COMPILER \
@@ -71,6 +75,7 @@ __DEFAULT_YES_OPTIONS = \
     DMAGENT \
     DYNAMICROOT \
     ED_CRYPTO \
+    EE \
     ELFTOOLCHAIN_TOOLS \
     EXAMPLES \
     FDT \
@@ -86,6 +91,7 @@ __DEFAULT_YES_OPTIONS = \
     GPIO \
     GPL_DTC \
     GROFF \
+    HAST \
     HTML \
     HYPERV \
     ICONV \
@@ -93,6 +99,7 @@ __DEFAULT_YES_OPTIONS = \
     INET6 \
     IPFILTER \
     IPFW \
+    ISCSI \
     JAIL \
     KDUMP \
     KVM \
@@ -139,6 +146,7 @@ __DEFAULT_YES_OPTIONS = \
     SYSCALL_COMPAT \
     SYSCONS \
     SYSINSTALL \
+    TALK \
     TCSH \
     TELNET \
     TESTS \
