@@ -252,7 +252,9 @@ do_el1h_sync(struct trapframe *frame)
 		panic("breakpoint");
 		break;
 	default:
-		panic("Unknown exception %x\n", exception);
+		print_registers(frame);
+		panic("Unknown kernel exception %x esr_el1 %lx\n", exception,
+		    esr);
 	}
 }
 
@@ -289,7 +291,9 @@ do_el0_sync(struct trapframe *frame)
 		data_abort(frame, esr, 1);
 		break;
 	default:
-		panic("Unknown exception %x\n", exception);
+		print_registers(frame);
+		panic("Unknown userland exception %x esr_el1 %lx\n", exception,
+		    esr);
 	}
 }
 
