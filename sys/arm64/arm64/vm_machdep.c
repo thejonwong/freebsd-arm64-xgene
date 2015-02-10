@@ -38,6 +38,7 @@ __FBSDID("$FreeBSD$");
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
+#include <vm/vm_map.h>
 #include <vm/uma.h>
 #include <vm/uma_int.h>
 
@@ -66,7 +67,8 @@ cpu_fork(struct thread *td1, struct proc *p2, struct thread *td2, int flags)
 	td2->td_pcb = pcb2;
 	bcopy(td1->td_pcb, pcb2, sizeof(*pcb2));
 
-	pmap_activate(td2);
+	td2->td_pcb->pcb_l1addr =
+	    vtophys(vmspace_pmap(td2->td_proc->p_vmspace)->pm_l1);
 
 	tf = (struct trapframe *)STACKALIGN((struct trapframe *)pcb2 - 1);
 	bcopy(td1->td_frame, tf, sizeof(*tf));
