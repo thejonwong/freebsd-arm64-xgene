@@ -225,22 +225,22 @@ psci_v0_1_init(device_t dev)
 	/* PSCI v0.1 doesn't specify function IDs. Get them from DT */
 	node = ofw_bus_get_node(dev);
 
-	if ((len = OF_getproplen(node, "cpu_suspend"))) {
+	if ((len = OF_getproplen(node, "cpu_suspend")) > 0) {
 		OF_getencprop(node, "cpu_suspend", &psci_fnid, len);
 		sc->psci_fnids[PSCI_FN_CPU_SUSPEND] = psci_fnid;
 	}
 
-	if ((len = OF_getproplen(node, "cpu_on"))) {
+	if ((len = OF_getproplen(node, "cpu_on")) > 0) {
 		OF_getencprop(node, "cpu_on", &psci_fnid, len);
 		sc->psci_fnids[PSCI_FN_CPU_ON] = psci_fnid;
 	}
 
-	if ((len = OF_getproplen(node, "cpu_off"))) {
+	if ((len = OF_getproplen(node, "cpu_off")) > 0) {
 		OF_getencprop(node, "cpu_off", &psci_fnid, len);
 		sc->psci_fnids[PSCI_FN_CPU_OFF] = psci_fnid;
 	}
 
-	if ((len = OF_getproplen(node, "migrate"))) {
+	if ((len = OF_getproplen(node, "migrate")) > 0) {
 		OF_getencprop(node, "migrate", &psci_fnid, len);
 		sc->psci_fnids[PSCI_FN_MIGRATE] = psci_fnid;
 	}
