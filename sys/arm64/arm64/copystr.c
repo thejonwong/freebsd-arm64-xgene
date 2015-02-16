@@ -46,6 +46,8 @@ copystr(const void * __restrict kfaddr, void * __restrict kdaddr, size_t len,
 	for (pos = 0; pos < len; pos++) {
 		dst[pos] = src[pos];
 		if (src[pos] == '\0') {
+			/* Increment pos to hold the number of bytes copied */
+			pos++;
 			error = 0;
 			break;
 		}
