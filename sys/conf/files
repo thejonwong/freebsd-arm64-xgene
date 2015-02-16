@@ -1520,7 +1520,9 @@ ipw_monitor.fw			optional ipwmonitorfw | ipwfw		\
 	no-obj no-implicit-rule						\
 	clean		"ipw_monitor.fw"
 dev/iscsi/icl.c			optional iscsi | ctl 
+dev/iscsi/icl_conn_if.m		optional iscsi | ctl 
 dev/iscsi/icl_proxy.c		optional iscsi | ctl
+dev/iscsi/icl_soft.c		optional iscsi | ctl 
 dev/iscsi/iscsi.c		optional iscsi scbus
 dev/iscsi_initiator/iscsi.c	optional iscsi_initiator scbus
 dev/iscsi_initiator/iscsi_subr.c	optional iscsi_initiator scbus
@@ -2561,8 +2563,16 @@ dev/usb/template/usb_template_mtp.c	optional usb_template
 dev/usb/template/usb_template_phone.c	optional usb_template
 dev/usb/template/usb_template_serialnet.c	optional usb_template
 #
+# USB video drivers
+#
+dev/usb/video/udl.c			optional udl
+#
 # USB END
 #
+dev/videomode/videomode.c		optional videomode
+dev/videomode/edid.c			optional videomode
+dev/videomode/pickmode.c		optional videomode
+dev/videomode/vesagtf.c			optional videomode
 dev/utopia/idtphy.c		optional utopia
 dev/utopia/suni.c		optional utopia
 dev/utopia/utopia.c		optional utopia
@@ -3191,7 +3201,7 @@ libkern/jenkins_hash.c		standard
 libkern/murmur3_32.c		standard
 libkern/mcount.c		optional profiling-routine
 libkern/memcchr.c		standard
-libkern/memchr.c		optional fdt | gdb
+libkern/memchr.c		standard
 libkern/memcmp.c		standard
 libkern/memmem.c		optional gdb
 libkern/qsort.c			standard
