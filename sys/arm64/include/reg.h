@@ -38,17 +38,17 @@
 #define	_MACHINE_REG_H_
 
 struct reg {
-	unsigned long long sp;
-	unsigned long long lr;
-	unsigned long long elr;
-	unsigned long long spsr;
-	unsigned long long x[30];
+	uint64_t x[30];
+	uint64_t lr;
+	uint64_t sp;
+	uint64_t elr;
+	uint32_t spsr;
 };
 
 struct fpreg {
 	__uint128_t	fp_q[32];
-	uint32_t	fp_cr;
 	uint32_t	fp_sr;
+	uint32_t	fp_cr;
 };
 
 struct dbreg {

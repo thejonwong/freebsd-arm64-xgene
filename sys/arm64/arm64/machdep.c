@@ -124,29 +124,70 @@ bzero(void *buf, size_t len)
 int
 fill_regs(struct thread *td, struct reg *regs)
 {
+	struct trapframe *frame;
 
-	panic("fill_regs");
+	frame = td->td_frame;
+	regs->sp = frame->tf_sp;
+	regs->lr = frame->tf_lr;
+	regs->elr = frame->tf_elr;
+	regs->spsr = frame->tf_spsr;
+
+	memcpy(regs->x, frame->tf_x, sizeof(regs->x));
+
+	return (0);
 }
 
 int
 set_regs(struct thread *td, struct reg *regs)
 {
+	struct trapframe *frame;
 
-	panic("set_regs");
+	frame = td->td_frame;
+	frame->tf_sp = regs->sp;
+	frame->tf_lr = regs->lr;
+	frame->tf_elr = regs->elr;
+	frame->tf_spsr = regs->spsr;
+
+	memcpy(frame->tf_x, regs->x, sizeof(frame->tf_x));
+
+	return (0);
 }
 
 int
 fill_fpregs(struct thread *td, struct fpreg *regs)
 {
+#ifdef VFP
+	struct pcb *pcb;
 
-	panic("fill_fpregs");
+	pcb = td->td_pcb;
+	if ((pcb->pcb_fpflags & PCB_FP_STARTED) != 0) {
+		/*
+		 * If we have just been running VFP instructions we will
+		 * need to save the state to memcpy it below.
+		 */
+		vfp_save_state(td);
+
+		memcpy(regs->fp_q, pcb->pcb_vfp, sizeof(regs->fp_q));
+		regs->fp_cr = pcb->pcb_fpcr;
+		regs->fp_sr = pcb->pcb_fpsr;
+	} else
+#endif
+		memset(regs->fp_q, 0, sizeof(regs->fp_q));
+	return (0);
 }
 
 int
 set_fpregs(struct thread *td, struct fpreg *regs)
 {
+#ifdef VFP
+	struct pcb *pcb;
 
-	panic("set_fpregs");
+	pcb = td->td_pcb;
+	memcpy(pcb->pcb_vfp, regs->fp_q, sizeof(regs->fp_q));
+	pcb->pcb_fpcr = regs->fp_cr;
+	pcb->pcb_fpsr = regs->fp_sr;
+#endif
+	return (0);
 }
 
 int
@@ -202,6 +243,8 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 /* Sanity check these are the same size, they will be memcpy'd to and fro */
 CTASSERT(sizeof(((struct trapframe *)0)->tf_x) ==
     sizeof((struct gpregs *)0)->gp_x);
+CTASSERT(sizeof(((struct trapframe *)0)->tf_x) ==
+    sizeof((struct reg *)0)->x);
 
 int
 get_mcontext(struct thread *td, mcontext_t *mcp, int clear_ret)
