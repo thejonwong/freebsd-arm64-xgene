@@ -5077,10 +5077,11 @@ pmap_remove_pages(pmap_t pmap)
 	pmap_free_zero_pages(&free);
 }
 
-#if 0
 static boolean_t
 pmap_page_test_mappings(vm_page_t m, boolean_t accessed, boolean_t modified)
 {
+	panic("pmap_page_test_mappings");
+#if 0
 	struct rwlock *lock;
 	pv_entry_t pv;
 	struct md_page *pvh;
@@ -5162,8 +5163,8 @@ out:
 	rw_runlock(lock);
 	rw_runlock(&pvh_global_lock);
 	return (rv);
-}
 #endif /* 0 */
+}
 
 /*
  *	pmap_is_modified:
@@ -5175,8 +5176,6 @@ boolean_t
 pmap_is_modified(vm_page_t m)
 {
 
-	panic("pmap_is_modified");
-#if 0
 	KASSERT((m->oflags & VPO_UNMANAGED) == 0,
 	    ("pmap_is_modified: page %p is not managed", m));
 
@@ -5189,7 +5188,6 @@ pmap_is_modified(vm_page_t m)
 	if (!vm_page_xbusied(m) && (m->aflags & PGA_WRITEABLE) == 0)
 		return (FALSE);
 	return (pmap_page_test_mappings(m, FALSE, TRUE));
-#endif
 }
 
 /*
@@ -5226,8 +5224,7 @@ pmap_is_referenced(vm_page_t m)
 
 	KASSERT((m->oflags & VPO_UNMANAGED) == 0,
 	    ("pmap_is_referenced: page %p is not managed", m));
-	panic("pmap_is_referenced");
-//	return (pmap_page_test_mappings(m, TRUE, FALSE));
+	return (pmap_page_test_mappings(m, TRUE, FALSE));
 }
 
 /*
