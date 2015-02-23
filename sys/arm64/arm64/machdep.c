@@ -41,6 +41,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/imgact.h>
 #include <sys/kdb.h> 
 #include <sys/kernel.h>
+#include <sys/limits.h>
 #include <sys/linker.h>
 #include <sys/msgbuf.h>
 #include <sys/pcpu.h>
@@ -541,6 +542,8 @@ init_proc0(vm_offset_t kstack)
 	thread0.td_kstack = kstack;
 	thread0.td_pcb = (struct pcb *)
 	   (thread0.td_kstack + KSTACK_PAGES * PAGE_SIZE) - 1;
+	thread0.td_pcb->pcb_fpflags = 0;
+	thread0.td_pcb->pcb_vfpcpu = UINT_MAX;
 	thread0.td_frame = &proc0_tf;
 	pcpup->pc_curpcb = thread0.td_pcb;
 }
