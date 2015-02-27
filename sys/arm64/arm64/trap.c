@@ -243,6 +243,7 @@ do_el1h_sync(struct trapframe *frame)
 
 	switch(exception) {
 	case EXCP_FP_SIMD:
+	case EXCP_TRAP_FP:
 		panic("VFP exception in the kernel");
 	case EXCP_DATA_ABORT:
 		data_abort(frame, esr, 0);
@@ -277,6 +278,7 @@ do_el0_sync(struct trapframe *frame)
 
 	switch(exception) {
 	case EXCP_FP_SIMD:
+	case EXCP_TRAP_FP:
 #ifdef VFP
 		vfp_restore_state();
 #else
