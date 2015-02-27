@@ -1,9 +1,9 @@
 # $FreeBSD$
 
-.if ${MACHINE_ARCH} == "amd64" || \
+.if ${MACHINE_ARCH} == "aarch64" || \
+    ${MACHINE_ARCH} == "amd64" || \
     ${MACHINE_ARCH} == "i386" || \
     (${MACHINE} == "arm" && ${MACHINE_ARCH:Marm*eb*} == "") || \
-    ${MACHINE_ARCH} == "arm64"  || \
     ${MACHINE_ARCH:Mmips*el} != ""
 TARGET_ENDIANNESS= 1234
 .elif ${MACHINE_ARCH} == "powerpc" || \
