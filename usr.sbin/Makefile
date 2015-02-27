@@ -86,6 +86,7 @@ SUBDIR=	adduser \
 	traceroute \
 	trpt \
 	tzsetup \
+	uefisign \
 	ugidfw \
 	vigr \
 	vipw \
@@ -93,8 +94,6 @@ SUBDIR=	adduser \
 	watch \
 	watchdogd \
 	zic
-
-SUBDIR:=	${SUBDIR:Nifmcstat}
 
 # NB: keep these sorted by MK_* knobs
 
